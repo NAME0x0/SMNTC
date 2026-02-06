@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMNTC — Topographic Wave Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: 'SF Mono', 'Fira Code', monospace; }
+    canvas { display: block; }
+
+    #controls {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    #controls button {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #e0e0e0;
+      padding: 8px 16px;
+      font-size: 11px;
+      font-family: inherit;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    #controls button:hover {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.3);
+    }
+
+    #controls button.active {
+      background: rgba(255,255,255,0.15);
+      border-color: rgba(255,255,255,0.5);
+      color: #fff;
+    }
+
+    #info {
+      position: fixed;
+      top: 24px;
+      left: 24px;
+      color: rgba(255,255,255,0.4);
+      font-size: 11px;
+      line-height: 1.6;
+      letter-spacing: 0.3px;
+      z-index: 10;
+    }
+
+    #info strong {
+      color: rgba(255,255,255,0.7);
+      font-weight: 500;
+    }
+
+    #fps {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      color: rgba(255,255,255,0.3);
+      font-size: 10px;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+<div id="info">
+  <strong>SMNTC</strong> — Semantic Shader Engine<br/>
+  Topographic Wave Demo v1.0.0<br/><br/>
+  Move cursor to interact<br/>
+  Click buttons below to switch states
+</div>
+
+<div id="fps">-- FPS</div>
+
+<div id="controls">
+  <!-- Vibe buttons -->
+  <button data-vibe="stable">Stable</button>
+  <button data-vibe="calm" class="active">Calm</button>
+  <button data-vibe="agitated">Agitated</button>
+  <button data-vibe="chaotic">Chaotic</button>
+
+  <span style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px"></span>
+
+  <!-- Surface buttons -->
+  <button data-surface="topographic" class="active">Topo</button>
+  <button data-surface="crystalline">Crystal</button>
+  <button data-surface="fluid">Fluid</button>
+  <button data-surface="glitch">Glitch</button>
+
+  <span style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px"></span>
+
+  <!-- Palette buttons -->
+  <button data-palette="monochrome" class="active">Mono</button>
+  <button data-palette="ember">Ember</button>
+  <button data-palette="arctic">Arctic</button>
+  <button data-palette="neon">Neon</button>
+  <button data-palette="phantom">Phantom</button>
+</div>
+
+<!-- Three.js from CDN -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+// ============================================================================
+// SMNTC — Standalone Demo (Inline Kernel)
+// This demo embeds the core logic directly for zero-build-step demonstration.
+// In production, you'd import from the 'smntc' package.
+// ============================================================================
+
+import * as THREE from 'three';
+
+// ---------------------------------------------------------------------------
+// 1. Simplex Noise (JS version for any CPU-side needs)
+// ---------------------------------------------------------------------------
+
+// (Not needed for this demo — noise runs entirely on GPU via the shader.)
+
+// ---------------------------------------------------------------------------
+// 2. Semantic Dictionary (Inline)
+// ---------------------------------------------------------------------------
+
+const VIBE_MAP = {
+  stable:   { frequency: 0.1,  amplitude: 0.02, damping: 0.95, noiseSpeed: 0.05 },
+  calm:     { frequency: 0.5,  amplitude: 0.08, damping: 0.80, noiseSpeed: 0.15 },
+  agitated: { frequency: 2.5,  amplitude: 0.20, damping: 0.40, noiseSpeed: 0.60 },
+  chaotic:  { frequency: 5.0,  amplitude: 0.40, damping: 0.05, noiseSpeed: 1.50 },
+};
+
+const SURFACE_MAP = {
+  topographic: { mode: 0, noiseScale: 1.0 },
+  crystalline: { mode: 1, noiseScale: 2.5 },
+  fluid:       { mode: 2, noiseScale: 0.6 },
+  glitch:      { mode: 3, noiseScale: 3.0 },
+};
+
+const PALETTE_MAP = {
+  monochrome: { primary: [0.878, 0.878, 0.878], accent: [1, 1, 1],           bg: [0, 0, 0] },
+  ember:      { primary: [1, 0.42, 0.21],       accent: [1, 0.67, 0],        bg: [0.04, 0.04, 0.04] },
+  arctic:     { primary: [0.533, 0.8, 1],        accent: [1, 1, 1],           bg: [0.02, 0.02, 0.063] },
+  neon:       { primary: [0, 1, 0.533],           accent: [1, 0, 1],           bg: [0.04, 0.04, 0.04] },
+  phantom:    { primary: [0.627, 0.627, 0.69],    accent: [0.376, 0.376, 0.627], bg: [0.031, 0.031, 0.047] },
+};
+
+// ---------------------------------------------------------------------------
+// 3. Spring Physics (Inline)
+// ---------------------------------------------------------------------------
+
+class Spring {
+  constructor(value, stiffness = 170, damping = 26) {
+    this.value = value;
+    this.target = value;
+    this.velocity = 0;
+    this.stiffness = stiffness;
+    this.damping = damping;
+  }
+
+  setTarget(t) {
+    this.target = t;
+  }
+
+  step(dt) {
+    const safeDt = Math.min(dt, 0.064);
+    const displacement = this.value - this.target;
+    const springForce = -this.stiffness * displacement;
+    const dampingForce = -this.damping * this.velocity;
+    this.velocity += (springForce + dampingForce) * safeDt;
+    this.value += this.velocity * safeDt;
+
+    if (Math.abs(this.velocity) < 0.001 && Math.abs(displacement) < 0.001) {
+      this.value = this.target;
+      this.velocity = 0;
+    }
+    return this.value;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. Vertex Shader (GLSL)
+// ---------------------------------------------------------------------------
+
+const vertexShader = /* glsl */ `
+precision highp float;
+
+uniform float uTime;
+uniform float uSurfaceMode;
+uniform float uFrequency;
+uniform float uAmplitude;
+uniform float uNoiseScale;
+uniform float uNoiseSpeed;
+uniform float uIntensity;
+uniform float uSpeed;
+uniform float uContourLines;
+uniform float uReactivityMode;
+uniform float uReactivityStrength;
+uniform float uReactivityRadius;
+uniform vec3  uPointer;
+uniform float uShockTime;
+
+varying vec3  vNormal;
+varying vec3  vPosition;
+varying float vDisplacement;
+varying vec2  vUv;
+
+// Simplex 3D noise
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 permute(vec4 x) { return mod289(((x * 34.0) + 10.0) * x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+float snoise(vec3 v) {
+  const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+  const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+  vec3 i = floor(v + dot(v, C.yyy));
+  vec3 x0 = v - i + dot(i, C.xxx);
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min(g.xyz, l.zxy);
+  vec3 i2 = max(g.xyz, l.zxy);
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy;
+  vec3 x3 = x0 - D.yyy;
+  i = mod289(i);
+  vec4 p = permute(permute(permute(
+    i.z + vec4(0.0, i1.z, i2.z, 1.0))
+    + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+    + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+  float n_ = 0.142857142857;
+  vec3 ns = n_ * D.wyz - D.xzx;
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_);
+  vec4 x2_ = x_ * ns.x + ns.yyyy;
+  vec4 y2_ = y_ * ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x2_) - abs(y2_);
+  vec4 b0 = vec4(x2_.xy, y2_.xy);
+  vec4 b1 = vec4(x2_.zw, y2_.zw);
+  vec4 s0 = floor(b0) * 2.0 + 1.0;
+  vec4 s1 = floor(b1) * 2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+  vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+  vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+  vec3 p0 = vec3(a0.xy, h.x);
+  vec3 p1 = vec3(a0.zw, h.y);
+  vec3 p2 = vec3(a1.xy, h.z);
+  vec3 p3 = vec3(a1.zw, h.w);
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+  p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+  vec4 m = max(0.5 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 105.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+}
+
+// Voronoi
+float voronoi(vec3 p) {
+  vec3 i_st = floor(p);
+  vec3 f_st = fract(p);
+  float minDist = 1.0;
+  for (int z = -1; z <= 1; z++) {
+    for (int y = -1; y <= 1; y++) {
+      for (int x = -1; x <= 1; x++) {
+        vec3 neighbor = vec3(float(x), float(y), float(z));
+        vec3 pt = vec3(
+          fract(sin(dot(i_st + neighbor, vec3(12.9898,78.233,45.164))) * 43758.5453),
+          fract(sin(dot(i_st + neighbor, vec3(93.989,67.345,12.456))) * 28461.2534),
+          fract(sin(dot(i_st + neighbor, vec3(43.332,93.532,65.123))) * 63728.1927)
+        );
+        float dist = length(neighbor + pt - f_st);
+        minDist = min(minDist, dist);
+      }
+    }
+  }
+  return minDist;
+}
+
+float topographicDisp(vec3 pos, float t) {
+  float w1 = sin(pos.x * uFrequency + t * 0.8) * 0.5;
+  float w2 = sin(pos.y * uFrequency * 1.3 + t * 0.6) * 0.3;
+  float w3 = cos(pos.x * uFrequency * 0.7 + pos.y * uFrequency * 0.9 + t * 1.1) * 0.2;
+  return (w1 + w2 + w3) * uAmplitude * uIntensity;
+}
+
+float crystallineDisp(vec3 pos, float t) {
+  float v = voronoi(pos * uNoiseScale + vec3(0.0, 0.0, t * uNoiseSpeed));
+  return floor(v * 8.0) / 8.0 * uAmplitude * uIntensity;
+}
+
+float fluidDisp(vec3 pos, float t) {
+  float n1 = snoise(pos * uNoiseScale + vec3(0.0, 0.0, t * uNoiseSpeed));
+  float n2 = snoise(pos * uNoiseScale * 2.0 + vec3(t * uNoiseSpeed * 0.5));
+  return (n1 * 0.6 + n2 * 0.4) * uAmplitude * uIntensity;
+}
+
+float glitchDisp(vec3 pos, float t) {
+  float base = snoise(pos * uNoiseScale + vec3(0.0, 0.0, t * uNoiseSpeed));
+  float q = floor(base * 4.0 + 0.5) / 4.0;
+  float burst = step(0.92, fract(sin(dot(pos.xy + t, vec2(12.9898, 78.233))) * 43758.5453));
+  return (q + burst * 0.3) * uAmplitude * uIntensity;
+}
+
+float getDisplacement(vec3 pos, float t) {
+  if (uSurfaceMode < 0.5) return topographicDisp(pos, t);
+  if (uSurfaceMode < 1.5) return crystallineDisp(pos, t);
+  if (uSurfaceMode < 2.5) return fluidDisp(pos, t);
+  return glitchDisp(pos, t);
+}
+
+float reactivityOffset(vec3 wp) {
+  if (uReactivityMode < 0.5) return 0.0;
+  float dist = distance(wp, uPointer);
+  float influence = 1.0 - smoothstep(0.0, uReactivityRadius, dist);
+  if (uReactivityMode < 1.5) return influence * uReactivityStrength * 0.3;
+  if (uReactivityMode < 2.5) return -influence * uReactivityStrength * 0.3;
+  float sr = uShockTime * 3.0;
+  float sw = sin((dist - sr) * 10.0) * exp(-uShockTime * 2.0);
+  float si = smoothstep(sr+1.0, sr, dist) * smoothstep(sr-1.0, sr, dist);
+  return sw * si * uReactivityStrength * 0.5;
+}
+
+vec3 computeNormal(vec3 pos, vec3 norm, float t) {
+  float eps = 0.01;
+  float dX = getDisplacement(pos + vec3(eps,0,0), t) - getDisplacement(pos - vec3(eps,0,0), t);
+  float dZ = getDisplacement(pos + vec3(0,0,eps), t) - getDisplacement(pos - vec3(0,0,eps), t);
+  return normalize(norm + vec3(-dX/(2.0*eps), 1.0, -dZ/(2.0*eps)));
+}
+
+void main() {
+  float t = mod(uTime * uSpeed, 6283.1853);
+  vec3 pos = position;
+  float disp = getDisplacement(pos, t) + reactivityOffset(pos);
+  vec3 displaced = pos + normal * disp;
+
+  vNormal = normalize(normalMatrix * computeNormal(pos, normal, t));
+  vPosition = (modelViewMatrix * vec4(displaced, 1.0)).xyz;
+  vDisplacement = disp;
+  vUv = uv;
+
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+}
+`;
+
+// ---------------------------------------------------------------------------
+// 5. Fragment Shader (GLSL)
+// ---------------------------------------------------------------------------
+
+const fragmentShader = /* glsl */ `
+precision highp float;
+
+uniform vec3  uPrimaryColor;
+uniform vec3  uAccentColor;
+uniform float uContourLines;
+uniform float uWireframe;
+uniform float uWireframeWidth;
+uniform float uIntensity;
+
+varying vec3  vNormal;
+varying vec3  vPosition;
+varying float vDisplacement;
+varying vec2  vUv;
+
+float edgeFactor() {
+  vec2 grid = abs(fract(vUv * uContourLines - 0.5) - 0.5);
+  vec2 dGrid = fwidth(vUv * uContourLines);
+  vec2 a2 = smoothstep(vec2(0.0), dGrid * uWireframeWidth * 1.5, grid);
+  return min(a2.x, a2.y);
+}
+
+float contourFactor() {
+  float sd = vDisplacement * uContourLines * 10.0;
+  float line = abs(fract(sd) - 0.5);
+  float dLine = fwidth(sd);
+  return smoothstep(0.0, dLine * 1.5, line);
+}
+
+vec3 lighting(vec3 base) {
+  vec3 ld = normalize(vec3(0.5, 1.0, 0.8));
+  vec3 vd = normalize(-vPosition);
+  vec3 n  = normalize(vNormal);
+  float ambient = 0.15;
+  float diff = max(dot(n, ld), 0.0);
+  vec3 halfDir = normalize(ld + vd);
+  float spec = pow(max(dot(n, halfDir), 0.0), 64.0) * 0.3;
+  float rim = pow(1.0 - max(dot(vd, n), 0.0), 3.0) * 0.2;
+  return base * (ambient + diff * 0.7) + vec3(spec + rim);
+}
+
+void main() {
+  float blend = smoothstep(-0.15, 0.15, vDisplacement) * uIntensity;
+  vec3 base = mix(uPrimaryColor, uAccentColor, blend);
+
+  if (uWireframe > 0.5) {
+    float c = contourFactor();
+    float e = edgeFactor();
+    float lf = min(c, e);
+    vec3 lc = lighting(base);
+    float alpha = 1.0 - lf;
+    if (alpha < 0.05) discard;
+    gl_FragColor = vec4(lc, alpha);
+  } else {
+    gl_FragColor = vec4(lighting(base), 1.0);
+  }
+}
+`;
+
+// ---------------------------------------------------------------------------
+// 6. Scene Setup
+// ---------------------------------------------------------------------------
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x000000);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 2.5, 3.5);
+camera.lookAt(0, 0, 0);
+
+// High-density plane
+const geometry = new THREE.PlaneGeometry(5, 5, 256, 256);
+const uniforms = {
+  uTime:                { value: 0 },
+  uSurfaceMode:         { value: 0 },
+  uFrequency:           { value: 0.5 },
+  uAmplitude:           { value: 0.08 },
+  uNoiseScale:          { value: 1.0 },
+  uNoiseSpeed:          { value: 0.15 },
+  uIntensity:           { value: 1.0 },
+  uSpeed:               { value: 1.0 },
+  uContourLines:        { value: 16 },
+  uReactivityMode:      { value: 1 },   // magnetic by default
+  uReactivityStrength:  { value: 0.5 },
+  uReactivityRadius:    { value: 2.0 },
+  uPointer:             { value: new THREE.Vector3(0, 0, 0) },
+  uShockTime:           { value: 100.0 },
+  uPrimaryColor:        { value: new THREE.Vector3(0.878, 0.878, 0.878) },
+  uAccentColor:         { value: new THREE.Vector3(1, 1, 1) },
+  uBackgroundColor:     { value: new THREE.Vector3(0, 0, 0) },
+  uWireframe:           { value: 1.0 },
+  uWireframeWidth:      { value: 1.0 },
+};
+
+const material = new THREE.ShaderMaterial({
+  vertexShader,
+  fragmentShader,
+  uniforms,
+  transparent: true,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  extensions: { derivatives: true },
+});
+
+const mesh = new THREE.Mesh(geometry, material);
+mesh.rotation.x = -Math.PI / 2;
+scene.add(mesh);
+
+// ---------------------------------------------------------------------------
+// 7. Spring-animated state
+// ---------------------------------------------------------------------------
+
+const springs = {
+  frequency:  new Spring(0.5),
+  amplitude:  new Spring(0.08),
+  noiseScale: new Spring(1.0),
+  noiseSpeed: new Spring(0.15),
+  primaryR:   new Spring(0.878),
+  primaryG:   new Spring(0.878),
+  primaryB:   new Spring(0.878),
+  accentR:    new Spring(1),
+  accentG:    new Spring(1),
+  accentB:    new Spring(1),
+  bgR:        new Spring(0),
+  bgG:        new Spring(0),
+  bgB:        new Spring(0),
+};
+
+function setVibe(vibe) {
+  const v = VIBE_MAP[vibe];
+  springs.frequency.setTarget(v.frequency);
+  springs.amplitude.setTarget(v.amplitude);
+  springs.noiseSpeed.setTarget(v.noiseSpeed);
+}
+
+function setSurface(surface) {
+  const s = SURFACE_MAP[surface];
+  uniforms.uSurfaceMode.value = s.mode; // discrete — instant
+  springs.noiseScale.setTarget(s.noiseScale);
+}
+
+function setPalette(palette) {
+  const p = PALETTE_MAP[palette];
+  springs.primaryR.setTarget(p.primary[0]);
+  springs.primaryG.setTarget(p.primary[1]);
+  springs.primaryB.setTarget(p.primary[2]);
+  springs.accentR.setTarget(p.accent[0]);
+  springs.accentG.setTarget(p.accent[1]);
+  springs.accentB.setTarget(p.accent[2]);
+  springs.bgR.setTarget(p.bg[0]);
+  springs.bgG.setTarget(p.bg[1]);
+  springs.bgB.setTarget(p.bg[2]);
+}
+
+// ---------------------------------------------------------------------------
+// 8. Input Proxy (Pointer Raycasting)
+// ---------------------------------------------------------------------------
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+}, { passive: true });
+
+// ---------------------------------------------------------------------------
+// 9. UI Controls
+// ---------------------------------------------------------------------------
+
+document.querySelectorAll('#controls button[data-vibe]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-vibe]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setVibe(btn.dataset.vibe);
+  });
+});
+
+document.querySelectorAll('#controls button[data-surface]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-surface]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setSurface(btn.dataset.surface);
+  });
+});
+
+document.querySelectorAll('#controls button[data-palette]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-palette]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setPalette(btn.dataset.palette);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 10. Animation Loop
+// ---------------------------------------------------------------------------
+
+const clock = new THREE.Clock();
+let frameCount = 0;
+let fpsAccum = 0;
+const fpsEl = document.getElementById('fps');
+
+// Thermal guard: pause when hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) clock.stop();
+  else clock.start();
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const dt = clock.getDelta();
+  const elapsed = clock.getElapsedTime();
+
+  // Step all springs
+  for (const s of Object.values(springs)) s.step(dt);
+
+  // Write spring values to uniforms
+  uniforms.uTime.value = elapsed;
+  uniforms.uFrequency.value = springs.frequency.value;
+  uniforms.uAmplitude.value = springs.amplitude.value;
+  uniforms.uNoiseScale.value = springs.noiseScale.value;
+  uniforms.uNoiseSpeed.value = springs.noiseSpeed.value;
+  uniforms.uPrimaryColor.value.set(springs.primaryR.value, springs.primaryG.value, springs.primaryB.value);
+  uniforms.uAccentColor.value.set(springs.accentR.value, springs.accentG.value, springs.accentB.value);
+
+  // Update clear color from spring
+  renderer.setClearColor(new THREE.Color(springs.bgR.value, springs.bgG.value, springs.bgB.value));
+
+  // Raycast for pointer
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObject(mesh);
+  if (hits.length > 0) {
+    uniforms.uPointer.value.copy(hits[0].point);
+  }
+
+  // FPS counter
+  frameCount++;
+  fpsAccum += dt;
+  if (fpsAccum >= 0.5) {
+    fpsEl.textContent = Math.round(frameCount / fpsAccum) + ' FPS';
+    frameCount = 0;
+    fpsAccum = 0;
+  }
+
+  renderer.render(scene, camera);
+}
+
+clock.start();
+animate();
+
+// ---------------------------------------------------------------------------
+// 11. Resize Handler
+// ---------------------------------------------------------------------------
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
