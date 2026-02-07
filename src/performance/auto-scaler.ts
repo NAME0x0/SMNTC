@@ -34,7 +34,12 @@ export class AutoScaler {
   private upgradeThreshold: number;
   private enabled: boolean;
 
-  private frameTimes: number[] = [];
+  // Ring buffer for O(1) frame time tracking
+  private frameTimes: Float64Array;
+  private frameIndex = 0;
+  private frameCount = 0;
+  private runningSum = 0;
+
   private consecutiveBad = 0;
   private consecutiveGood = 0;
   private currentIndex: number;
@@ -53,6 +58,7 @@ export class AutoScaler {
     this.enabled = options.enabled ?? true;
     this.currentIndex = FIDELITY_LADDER.indexOf(initialFidelity);
     if (this.currentIndex === -1) this.currentIndex = 1; // fallback to medium
+    this.frameTimes = new Float64Array(this.sampleWindow);
   }
 
   get currentFidelity(): Fidelity {
@@ -62,20 +68,27 @@ export class AutoScaler {
   /**
    * Report a frame's delta time (in milliseconds).
    * Call this once per animation frame.
+   * Uses a ring buffer for O(1) insert and O(1) average computation.
    */
   reportFrame(deltaMs: number): void {
     if (!this.enabled) return;
 
-    this.frameTimes.push(deltaMs);
-    if (this.frameTimes.length > this.sampleWindow) {
-      this.frameTimes.shift();
+    // Subtract the value being overwritten from the running sum
+    if (this.frameCount >= this.sampleWindow) {
+      this.runningSum -= this.frameTimes[this.frameIndex];
     }
 
-    // Only evaluate after we have a full sample window
-    if (this.frameTimes.length < this.sampleWindow) return;
+    // Write new value into ring buffer
+    this.frameTimes[this.frameIndex] = deltaMs;
+    this.runningSum += deltaMs;
 
-    const avg =
-      this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
+    this.frameIndex = (this.frameIndex + 1) % this.sampleWindow;
+    if (this.frameCount < this.sampleWindow) this.frameCount++;
+
+    // Only evaluate after we have a full sample window
+    if (this.frameCount < this.sampleWindow) return;
+
+    const avg = this.runningSum / this.sampleWindow;
 
     if (avg > this.targetFrameTime * 1.15) {
       // Running slow: increment bad counter
@@ -85,7 +98,7 @@ export class AutoScaler {
       if (this.consecutiveBad >= this.downgradeThreshold && this.currentIndex > 0) {
         this.currentIndex--;
         this.consecutiveBad = 0;
-        this.frameTimes.length = 0;
+        this.resetBuffer();
         this.onFidelityChange?.(this.currentFidelity);
       }
     } else if (avg < this.targetFrameTime * 0.75) {
@@ -99,7 +112,7 @@ export class AutoScaler {
       ) {
         this.currentIndex++;
         this.consecutiveGood = 0;
-        this.frameTimes.length = 0;
+        this.resetBuffer();
         this.onFidelityChange?.(this.currentFidelity);
       }
     } else {
@@ -113,14 +126,21 @@ export class AutoScaler {
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (!enabled) {
-      this.frameTimes.length = 0;
+      this.resetBuffer();
       this.consecutiveBad = 0;
       this.consecutiveGood = 0;
     }
   }
 
+  private resetBuffer(): void {
+    this.frameTimes.fill(0);
+    this.frameIndex = 0;
+    this.frameCount = 0;
+    this.runningSum = 0;
+  }
+
   dispose(): void {
-    this.frameTimes.length = 0;
+    this.resetBuffer();
     this.onFidelityChange = null;
   }
 }

@@ -12,6 +12,7 @@ import {
   Color,
   DoubleSide,
   AdditiveBlending,
+  NormalBlending,
 } from 'three';
 import type {
   BufferGeometry,
@@ -21,13 +22,13 @@ import type {
 } from 'three';
 
 import type { SMNTCConfig, ShaderConstants, Vibe, Surface, Reactivity, Palette } from '../semantic/tokens';
-import { transform, DEFAULTS } from '../semantic/transformer';
-import { resolveConstants } from '../semantic/dictionary';
+import { resolveConstants, DEFAULTS } from '../semantic/dictionary';
 import { createUniforms } from './uniforms';
 import type { SMNTCUniforms } from './uniforms';
 import { UBER_VERTEX_SHADER } from './shaders/uber.vert';
 import { UBER_FRAGMENT_SHADER } from './shaders/uber.frag';
 import { SpringBank } from '../physics/spring';
+import { Spring } from '../physics/spring';
 import type { SpringConfig } from '../physics/spring';
 import { InputProxy } from '../reactivity/input-proxy';
 import { AutoScaler } from '../performance/auto-scaler';
@@ -78,6 +79,15 @@ export class SMNTCKernel {
   private inputProxy: InputProxy | null = null;
   private autoScaler: AutoScaler;
 
+  // --- Cached Spring References (avoids Map.get per frame) ---
+  private _sp!: {
+    frequency: Spring; amplitude: Spring; noiseScale: Spring; noiseSpeed: Spring;
+    intensity: Spring; speed: Spring; contourLines: Spring;
+    reactivityStrength: Spring; reactivityRadius: Spring; wireframeWidth: Spring;
+    primaryR: Spring; primaryG: Spring; primaryB: Spring;
+    accentR: Spring; accentG: Spring; accentB: Spring;
+  };
+
   // --- References ---
   private mesh: Mesh | null = null;
   private camera: Camera | null = null;
@@ -106,7 +116,7 @@ export class SMNTCKernel {
       thermalGuard: options.thermalGuard ?? DEFAULTS.thermalGuard,
     };
 
-    this.constants = transform(this.config);
+    this.constants = resolveConstants(this.config);
     this.uniforms = createUniforms(this.constants);
 
     // Create the ShaderMaterial
@@ -117,7 +127,7 @@ export class SMNTCKernel {
       transparent: true,
       side: DoubleSide,
       depthWrite: !this.config.wireframe,
-      blending: this.config.wireframe ? AdditiveBlending : undefined as any,
+      blending: this.config.wireframe ? AdditiveBlending : NormalBlending,
       extensions: {
         derivatives: true, // Required for fwidth() in fragment shader
       },
@@ -169,64 +179,68 @@ export class SMNTCKernel {
   // =========================================================================
 
   private initializeSpringTargets(c: ShaderConstants): void {
-    this.springs.ensure('frequency', c.frequency);
-    this.springs.ensure('amplitude', c.amplitude);
-    this.springs.ensure('noiseScale', c.noiseScale);
-    this.springs.ensure('noiseSpeed', c.noiseSpeed);
-    this.springs.ensure('intensity', c.intensity);
-    this.springs.ensure('speed', c.speed);
-    this.springs.ensure('contourLines', c.contourLines);
-    this.springs.ensure('reactivityStrength', c.reactivityStrength);
-    this.springs.ensure('reactivityRadius', c.reactivityRadius);
-    this.springs.ensure('wireframeWidth', c.wireframeWidth);
-    this.springs.ensure('primaryR', c.primaryColor[0]);
-    this.springs.ensure('primaryG', c.primaryColor[1]);
-    this.springs.ensure('primaryB', c.primaryColor[2]);
-    this.springs.ensure('accentR', c.accentColor[0]);
-    this.springs.ensure('accentG', c.accentColor[1]);
-    this.springs.ensure('accentB', c.accentColor[2]);
+    this._sp = {
+      frequency:           this.springs.ensure('frequency', c.frequency),
+      amplitude:           this.springs.ensure('amplitude', c.amplitude),
+      noiseScale:          this.springs.ensure('noiseScale', c.noiseScale),
+      noiseSpeed:          this.springs.ensure('noiseSpeed', c.noiseSpeed),
+      intensity:           this.springs.ensure('intensity', c.intensity),
+      speed:               this.springs.ensure('speed', c.speed),
+      contourLines:        this.springs.ensure('contourLines', c.contourLines),
+      reactivityStrength:  this.springs.ensure('reactivityStrength', c.reactivityStrength),
+      reactivityRadius:    this.springs.ensure('reactivityRadius', c.reactivityRadius),
+      wireframeWidth:      this.springs.ensure('wireframeWidth', c.wireframeWidth),
+      primaryR:            this.springs.ensure('primaryR', c.primaryColor[0]),
+      primaryG:            this.springs.ensure('primaryG', c.primaryColor[1]),
+      primaryB:            this.springs.ensure('primaryB', c.primaryColor[2]),
+      accentR:             this.springs.ensure('accentR', c.accentColor[0]),
+      accentG:             this.springs.ensure('accentG', c.accentColor[1]),
+      accentB:             this.springs.ensure('accentB', c.accentColor[2]),
+    };
   }
 
   private pushSpringTargets(c: ShaderConstants): void {
-    this.springs.setTarget('frequency', c.frequency);
-    this.springs.setTarget('amplitude', c.amplitude);
-    this.springs.setTarget('noiseScale', c.noiseScale);
-    this.springs.setTarget('noiseSpeed', c.noiseSpeed);
-    this.springs.setTarget('intensity', c.intensity);
-    this.springs.setTarget('speed', c.speed);
-    this.springs.setTarget('contourLines', c.contourLines);
-    this.springs.setTarget('reactivityStrength', c.reactivityStrength);
-    this.springs.setTarget('reactivityRadius', c.reactivityRadius);
-    this.springs.setTarget('wireframeWidth', c.wireframeWidth);
-    this.springs.setTarget('primaryR', c.primaryColor[0]);
-    this.springs.setTarget('primaryG', c.primaryColor[1]);
-    this.springs.setTarget('primaryB', c.primaryColor[2]);
-    this.springs.setTarget('accentR', c.accentColor[0]);
-    this.springs.setTarget('accentG', c.accentColor[1]);
-    this.springs.setTarget('accentB', c.accentColor[2]);
+    const sp = this._sp;
+    sp.frequency.setTarget(c.frequency);
+    sp.amplitude.setTarget(c.amplitude);
+    sp.noiseScale.setTarget(c.noiseScale);
+    sp.noiseSpeed.setTarget(c.noiseSpeed);
+    sp.intensity.setTarget(c.intensity);
+    sp.speed.setTarget(c.speed);
+    sp.contourLines.setTarget(c.contourLines);
+    sp.reactivityStrength.setTarget(c.reactivityStrength);
+    sp.reactivityRadius.setTarget(c.reactivityRadius);
+    sp.wireframeWidth.setTarget(c.wireframeWidth);
+    sp.primaryR.setTarget(c.primaryColor[0]);
+    sp.primaryG.setTarget(c.primaryColor[1]);
+    sp.primaryB.setTarget(c.primaryColor[2]);
+    sp.accentR.setTarget(c.accentColor[0]);
+    sp.accentG.setTarget(c.accentColor[1]);
+    sp.accentB.setTarget(c.accentColor[2]);
   }
 
   private writeSpringValuesToUniforms(): void {
-    this.uniforms.uFrequency.value           = this.springs.getValue('frequency');
-    this.uniforms.uAmplitude.value           = this.springs.getValue('amplitude');
-    this.uniforms.uNoiseScale.value          = this.springs.getValue('noiseScale');
-    this.uniforms.uNoiseSpeed.value          = this.springs.getValue('noiseSpeed');
-    this.uniforms.uIntensity.value           = this.springs.getValue('intensity');
-    this.uniforms.uSpeed.value               = this.springs.getValue('speed');
-    this.uniforms.uContourLines.value        = this.springs.getValue('contourLines');
-    this.uniforms.uReactivityStrength.value  = this.springs.getValue('reactivityStrength');
-    this.uniforms.uReactivityRadius.value    = this.springs.getValue('reactivityRadius');
-    this.uniforms.uWireframeWidth.value      = this.springs.getValue('wireframeWidth');
+    const sp = this._sp;
+    this.uniforms.uFrequency.value           = sp.frequency.value;
+    this.uniforms.uAmplitude.value           = sp.amplitude.value;
+    this.uniforms.uNoiseScale.value          = sp.noiseScale.value;
+    this.uniforms.uNoiseSpeed.value          = sp.noiseSpeed.value;
+    this.uniforms.uIntensity.value           = sp.intensity.value;
+    this.uniforms.uSpeed.value               = sp.speed.value;
+    this.uniforms.uContourLines.value        = sp.contourLines.value;
+    this.uniforms.uReactivityStrength.value  = sp.reactivityStrength.value;
+    this.uniforms.uReactivityRadius.value    = sp.reactivityRadius.value;
+    this.uniforms.uWireframeWidth.value      = sp.wireframeWidth.value;
 
     this.uniforms.uPrimaryColor.value.set(
-      this.springs.getValue('primaryR'),
-      this.springs.getValue('primaryG'),
-      this.springs.getValue('primaryB'),
+      sp.primaryR.value,
+      sp.primaryG.value,
+      sp.primaryB.value,
     );
     this.uniforms.uAccentColor.value.set(
-      this.springs.getValue('accentR'),
-      this.springs.getValue('accentG'),
-      this.springs.getValue('accentB'),
+      sp.accentR.value,
+      sp.accentG.value,
+      sp.accentB.value,
     );
   }
 

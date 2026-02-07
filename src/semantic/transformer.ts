@@ -1,7 +1,7 @@
 // ============================================================================
 // SMNTC — Semantic Transformer
-// Middleware that converts SMNTCConfig → ShaderConstants and manages
-// spring-interpolated transitions between semantic states.
+// Re-exports the dictionary's resolveConstants as the public transform() API.
+// Kept as a stable public interface — consumers import from here.
 // ============================================================================
 
 import type { SMNTCConfig, ShaderConstants } from './tokens';
@@ -12,8 +12,8 @@ export type { SMNTCConfig, ShaderConstants };
 
 /**
  * Resolves a partial user config into fully-qualified shader constants.
- * This is the public entry point of the Semantic Transformer.
+ * Alias for resolveConstants — maintained for public API stability.
+ *
+ * @deprecated Prefer importing `resolveConstants` directly.
  */
-export function transform(config: SMNTCConfig): ShaderConstants {
-  return resolveConstants(config);
-}
+export const transform = resolveConstants;

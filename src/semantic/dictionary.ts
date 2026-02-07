@@ -161,6 +161,13 @@ export function resolveConstants(config: {
   const f = FIDELITY_MAP[fidelity];
   const p = PALETTE_MAP[palette];
 
+  // Runtime token validation — fail fast on invalid tokens
+  if (!s) throw new TypeError(`[SMNTC] Invalid surface token: "${surface}". Expected: ${Object.keys(SURFACE_MAP).join(', ')}`);
+  if (!v) throw new TypeError(`[SMNTC] Invalid vibe token: "${vibe}". Expected: ${Object.keys(VIBE_MAP).join(', ')}`);
+  if (!r) throw new TypeError(`[SMNTC] Invalid reactivity token: "${reactivity}". Expected: ${Object.keys(REACTIVITY_MAP).join(', ')}`);
+  if (!f) throw new TypeError(`[SMNTC] Invalid fidelity token: "${fidelity}". Expected: ${Object.keys(FIDELITY_MAP).join(', ')}`);
+  if (!p) throw new TypeError(`[SMNTC] Invalid palette token: "${palette}". Expected: ${Object.keys(PALETTE_MAP).join(', ')}`);
+
   return {
     surfaceMode:        s.mode,
     frequency:          v.frequency,

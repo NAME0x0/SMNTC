@@ -7,6 +7,22 @@ import { SMNTCKernel } from '../kernel/SMNTCKernel';
 import type { SMNTCConfig, Surface, Vibe, Reactivity, Palette, Fidelity } from '../semantic/tokens';
 import { DEFAULTS, resolveConstants } from '../semantic/transformer';
 
+// Module-scope dynamic imports — executed once at first import, not per render.
+let React: any;
+let Fiber: any;
+
+try {
+  React = require('react');
+} catch {
+  // Will throw at component call time if React is missing
+}
+
+try {
+  Fiber = require('@react-three/fiber');
+} catch {
+  // Will throw at component call time if R3F is missing
+}
+
 /**
  * Props for the <SMNTCSurface /> component.
  */
@@ -50,19 +66,10 @@ export interface SMNTCSurfaceProps extends SMNTCConfig {
  * The implementation dynamically imports them to avoid hard bundling.
  */
 export function SMNTCSurface(props: SMNTCSurfaceProps): any {
-  // Dynamic imports to avoid hard dependency
-  let React: any;
-  let Fiber: any;
-
-  try {
-    React = require('react');
-  } catch {
+  if (!React) {
     throw new Error('[SMNTC] SMNTCSurface requires React. Install: npm install react');
   }
-
-  try {
-    Fiber = require('@react-three/fiber');
-  } catch {
+  if (!Fiber) {
     throw new Error(
       '[SMNTC] SMNTCSurface requires @react-three/fiber. Install: npm install @react-three/fiber',
     );
@@ -84,8 +91,8 @@ export function SMNTCSurface(props: SMNTCSurfaceProps): any {
     rotation = [-Math.PI / 2, 0, 0],
   } = props;
 
-  const meshRef = React.useRef<any>(null);
-  const kernelRef = React.useRef<SMNTCKernel | null>(null);
+  const meshRef = React.useRef(null);
+  const kernelRef = React.useRef(null) as { current: SMNTCKernel | null };
   const { camera, gl } = Fiber.useThree();
 
   const segments = resolveConstants({ fidelity }).segments;

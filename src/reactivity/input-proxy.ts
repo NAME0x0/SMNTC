@@ -5,6 +5,7 @@
 // ============================================================================
 
 import type { Camera, Raycaster, Mesh, Vector3 } from 'three';
+import { Vector2 } from 'three';
 import type { SMNTCUniforms } from '../kernel/uniforms';
 
 export interface InputProxyOptions {
@@ -43,9 +44,16 @@ export class InputProxy {
   private ndcY = 0;
   private shockStartTime = -100;
 
+  // Reusable Vector2 for raycaster — zero allocation per frame
+  private readonly _ndcVec = new Vector2();
+
+  // Cached bounding rect — invalidated on resize
+  private cachedRect: DOMRect | null = null;
+
   // Bound handler references for clean removal
   private _onPointerMove: (e: PointerEvent) => void;
   private _onPointerDown: (e: PointerEvent) => void;
+  private _onResize: () => void;
   private _disposed = false;
 
   constructor(options: InputProxyOptions) {
@@ -58,15 +66,20 @@ export class InputProxy {
 
     this._onPointerMove = this.handlePointerMove.bind(this);
     this._onPointerDown = this.handlePointerDown.bind(this);
+    this._onResize = () => { this.cachedRect = null; };
 
     this.domElement.addEventListener('pointermove', this._onPointerMove, { passive: true });
     if (this.enableShockwave) {
       this.domElement.addEventListener('pointerdown', this._onPointerDown, { passive: true });
     }
+    window.addEventListener('resize', this._onResize, { passive: true });
   }
 
   private handlePointerMove(e: PointerEvent): void {
-    const rect = this.domElement.getBoundingClientRect();
+    if (!this.cachedRect) {
+      this.cachedRect = this.domElement.getBoundingClientRect();
+    }
+    const rect = this.cachedRect;
     this.ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     this.ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   }
@@ -83,10 +96,8 @@ export class InputProxy {
     if (this._disposed) return;
 
     // Raycast from camera through NDC pointer
-    (this.raycaster as any).setFromCamera(
-      { x: this.ndcX, y: this.ndcY },
-      this.camera,
-    );
+    this._ndcVec.set(this.ndcX, this.ndcY);
+    this.raycaster.setFromCamera(this._ndcVec, this.camera);
 
     const intersections = this.raycaster.intersectObject(this.mesh, false);
 
@@ -107,5 +118,7 @@ export class InputProxy {
     this._disposed = true;
     this.domElement.removeEventListener('pointermove', this._onPointerMove);
     this.domElement.removeEventListener('pointerdown', this._onPointerDown);
+    window.removeEventListener('resize', this._onResize);
+    this.cachedRect = null;
   }
 }

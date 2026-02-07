@@ -60,8 +60,11 @@ export function createUniforms(constants: ShaderConstants): SMNTCUniforms {
 }
 
 /**
- * Patch existing uniforms from new shader constants (for spring-animated transitions).
- * Does NOT reallocate Vector3 objects — mutates in place for zero-GC overhead.
+ * Patch existing uniforms from new shader constants (for advanced users
+ * bypassing the spring system). Mutates Vector3 objects in place for zero-GC.
+ *
+ * NOTE: Not used internally — the Kernel writes spring values directly.
+ * Exported for consumers who manage their own animation loops.
  */
 export function patchUniforms(
   uniforms: SMNTCUniforms,

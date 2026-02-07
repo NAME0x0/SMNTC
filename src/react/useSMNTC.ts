@@ -45,7 +45,7 @@ export function useSMNTC(options: SMNTCKernelOptions = {}): SMNTCKernel {
     );
   }
 
-  const kernelRef: RefObject<SMNTCKernel> = React.useRef<SMNTCKernel>(null);
+  const kernelRef: RefObject<SMNTCKernel> = React.useRef(null);
 
   if (!kernelRef.current) {
     kernelRef.current = new SMNTCKernel(options);
