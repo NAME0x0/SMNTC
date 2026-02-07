@@ -31,5 +31,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify dist outputs
+        run: |
+          test -f dist/index.mjs
+          test -f dist/index.js
+          test -f dist/index.d.ts
+          test -f dist/react/index.mjs
+          test -f dist/react/index.js
+          test -f dist/web/index.mjs
+          test -f dist/cli.js
+          echo "All expected dist outputs present."
+
       - name: Test
         run: npm test
