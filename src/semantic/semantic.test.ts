@@ -7,6 +7,7 @@ import {
   REACTIVITIES,
   FIDELITIES,
   PALETTES,
+  listTokens,
 } from '../index';
 import type { SMNTCConfig, ShaderConstants } from '../index';
 
@@ -38,6 +39,16 @@ describe('Token Enumerations', () => {
   it('all enumerations are frozen (readonly)', () => {
     // as const arrays in TS are readonly, but verify they can't be mutated at runtime
     expect(Object.isFrozen(SURFACES)).toBe(true);
+  });
+
+  it('listTokens returns registry values for all categories', () => {
+    expect(listTokens()).toEqual({
+      surfaces: [...SURFACES],
+      vibes: [...VIBES],
+      reactivities: [...REACTIVITIES],
+      fidelities: [...FIDELITIES],
+      palettes: [...PALETTES],
+    });
   });
 });
 

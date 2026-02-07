@@ -194,6 +194,70 @@ function MyComponent() {
 }
 ```
 
+### SMNTCMaterial Element
+
+```tsx
+import React from 'react';
+import { extend, useFrame } from '@react-three/fiber';
+import { SMNTCMaterial } from 'smntc';
+
+extend({ SMNTCMaterial });
+
+function Surface() {
+  const mat = React.useRef<SMNTCMaterial>(null);
+  useFrame((_state, delta) => mat.current?.update(delta));
+
+  return (
+    <mesh>
+      <planeGeometry args={[1, 1, 128, 128]} />
+      <smntcMaterial ref={mat} surface="fluid" vibe="calm" palette="arctic" />
+    </mesh>
+  );
+}
+```
+
+### useSMNTCMaterial Hook
+
+```typescript
+import { useRef } from 'react';
+import * as THREE from 'three';
+import { useSMNTCMaterial } from 'smntc/react';
+
+function Scene() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const material = useSMNTCMaterial({ surface: 'fluid', vibe: 'calm' }, meshRef);
+  return <primitive object={material} attach="material" />;
+}
+```
+
+---
+
+## Web Component (smntc/web)
+
+```html
+<script type="module">
+  import 'https://unpkg.com/smntc/dist/web/index.mjs';
+</script>
+
+<smntc-surface
+  style="width: 100%; height: 60vh; display: block;"
+  surface="topographic"
+  vibe="calm"
+  palette="monochrome"
+  reactivity="magnetic"
+></smntc-surface>
+```
+
+---
+
+## CLI
+
+```bash
+npx smntc init
+npx smntc add hero
+npx smntc preview
+```
+
 ---
 
 ## Advanced Exports
@@ -213,6 +277,21 @@ import {
   REACTIVITIES,        // readonly ['static', 'magnetic', 'repel', 'shockwave']
   FIDELITIES,          // readonly ['low', 'medium', 'high', 'ultra']
   PALETTES,            // readonly ['monochrome', 'ember', 'arctic', 'neon', 'phantom']
+
+  // Registry and presets
+  listTokens,          // () => { surfaces, vibes, reactivities, fidelities, palettes }
+  defineSurface,       // (name, def) => SurfaceDefinition
+  defineVibe,          // (name, def) => VibeDefinition
+  defineReactivity,    // (name, def) => ReactivityDefinition
+  defineFidelity,      // (name, def) => FidelityDefinition
+  definePalette,       // (name, def) => PaletteDefinition
+  definePreset,        // (preset: PresetDefinition) => PresetDefinition
+  applyPreset,         // (preset, config) => SMNTCConfig
+  getPreset,           // (name: string) => PresetDefinition | undefined
+  listPresets,         // () => string[]
+
+  // Material (advanced use)
+  SMNTCMaterial,
 
   // Physics
   Spring,              // Damped harmonic oscillator

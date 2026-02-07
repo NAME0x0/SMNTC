@@ -11,115 +11,14 @@ import type {
   Palette,
   ShaderConstants,
 } from './tokens';
-
-// ---------------------------------------------------------------------------
-// Surface → Shader Mode
-// ---------------------------------------------------------------------------
-
-const SURFACE_MAP: Record<Surface, { mode: number; noiseScale: number }> = {
-  topographic: { mode: 0, noiseScale: 1.0 },
-  crystalline: { mode: 1, noiseScale: 2.5 },
-  fluid:       { mode: 2, noiseScale: 0.6 },
-  glitch:      { mode: 3, noiseScale: 3.0 },
-};
-
-// ---------------------------------------------------------------------------
-// Vibe → Frequency / Amplitude / Damping
-// ---------------------------------------------------------------------------
-
-interface VibeConstants {
-  frequency: number;
-  amplitude: number;
-  damping: number;
-  noiseSpeed: number;
-}
-
-const VIBE_MAP: Record<Vibe, VibeConstants> = {
-  stable:   { frequency: 0.1,  amplitude: 0.02, damping: 0.95, noiseSpeed: 0.05 },
-  calm:     { frequency: 0.5,  amplitude: 0.08, damping: 0.80, noiseSpeed: 0.15 },
-  agitated: { frequency: 2.5,  amplitude: 0.20, damping: 0.40, noiseSpeed: 0.60 },
-  chaotic:  { frequency: 5.0,  amplitude: 0.40, damping: 0.05, noiseSpeed: 1.50 },
-};
-
-// ---------------------------------------------------------------------------
-// Reactivity → Mode / Strength / Radius
-// ---------------------------------------------------------------------------
-
-interface ReactivityConstants {
-  mode: number;
-  strength: number;
-  radius: number;
-}
-
-const REACTIVITY_MAP: Record<Reactivity, ReactivityConstants> = {
-  static:    { mode: 0, strength: 0.0,  radius: 0.0 },
-  magnetic:  { mode: 1, strength: 0.5,  radius: 2.0 },
-  repel:     { mode: 2, strength: 0.5,  radius: 2.0 },
-  shockwave: { mode: 3, strength: 1.0,  radius: 4.0 },
-};
-
-// ---------------------------------------------------------------------------
-// Fidelity → Segments / Wireframe Weight
-// ---------------------------------------------------------------------------
-
-interface FidelityConstants {
-  segments: number;
-  wireframeWidth: number;
-}
-
-const FIDELITY_MAP: Record<Fidelity, FidelityConstants> = {
-  low:    { segments: 64,  wireframeWidth: 1.5 },
-  medium: { segments: 128, wireframeWidth: 1.0 },
-  high:   { segments: 256, wireframeWidth: 0.75 },
-  ultra:  { segments: 512, wireframeWidth: 0.5 },
-};
-
-// ---------------------------------------------------------------------------
-// Palette → RGB Triplets (normalized 0-1)
-// ---------------------------------------------------------------------------
-
-interface PaletteColors {
-  primary: [number, number, number];
-  accent: [number, number, number];
-  background: [number, number, number];
-}
-
-function hexToRGB(hex: string): [number, number, number] {
-  const h = hex.replace('#', '');
-  return [
-    parseInt(h.substring(0, 2), 16) / 255,
-    parseInt(h.substring(2, 4), 16) / 255,
-    parseInt(h.substring(4, 6), 16) / 255,
-  ];
-}
-
-const PALETTE_MAP: Record<Palette, PaletteColors> = {
-  monochrome: {
-    primary:    hexToRGB('#e0e0e0'),
-    accent:     hexToRGB('#ffffff'),
-    background: hexToRGB('#000000'),
-  },
-  ember: {
-    primary:    hexToRGB('#ff6b35'),
-    accent:     hexToRGB('#ffaa00'),
-    background: hexToRGB('#0a0a0a'),
-  },
-  arctic: {
-    primary:    hexToRGB('#88ccff'),
-    accent:     hexToRGB('#ffffff'),
-    background: hexToRGB('#050510'),
-  },
-  neon: {
-    primary:    hexToRGB('#00ff88'),
-    accent:     hexToRGB('#ff00ff'),
-    background: hexToRGB('#0a0a0a'),
-  },
-  phantom: {
-    primary:    hexToRGB('#a0a0b0'),
-    accent:     hexToRGB('#6060a0'),
-    background: hexToRGB('#08080c'),
-  },
-};
+import {
+  getSurfaceRegistry,
+  getVibeRegistry,
+  getReactivityRegistry,
+  getFidelityRegistry,
+  getPaletteRegistry,
+  listTokens,
+} from './registry';
 
 // ---------------------------------------------------------------------------
 // Public: Resolve full config → ShaderConstants
@@ -155,18 +54,19 @@ export function resolveConstants(config: {
   const fidelity =   config.fidelity   ?? DEFAULTS.fidelity;
   const palette =    config.palette    ?? DEFAULTS.palette;
 
-  const s = SURFACE_MAP[surface];
-  const v = VIBE_MAP[vibe];
-  const r = REACTIVITY_MAP[reactivity];
-  const f = FIDELITY_MAP[fidelity];
-  const p = PALETTE_MAP[palette];
+  const s = getSurfaceRegistry().get(surface);
+  const v = getVibeRegistry().get(vibe);
+  const r = getReactivityRegistry().get(reactivity);
+  const f = getFidelityRegistry().get(fidelity);
+  const p = getPaletteRegistry().get(palette);
+  const available = listTokens();
 
   // Runtime token validation — fail fast on invalid tokens
-  if (!s) throw new TypeError(`[SMNTC] Invalid surface token: "${surface}". Expected: ${Object.keys(SURFACE_MAP).join(', ')}`);
-  if (!v) throw new TypeError(`[SMNTC] Invalid vibe token: "${vibe}". Expected: ${Object.keys(VIBE_MAP).join(', ')}`);
-  if (!r) throw new TypeError(`[SMNTC] Invalid reactivity token: "${reactivity}". Expected: ${Object.keys(REACTIVITY_MAP).join(', ')}`);
-  if (!f) throw new TypeError(`[SMNTC] Invalid fidelity token: "${fidelity}". Expected: ${Object.keys(FIDELITY_MAP).join(', ')}`);
-  if (!p) throw new TypeError(`[SMNTC] Invalid palette token: "${palette}". Expected: ${Object.keys(PALETTE_MAP).join(', ')}`);
+  if (!s) throw new TypeError(`[SMNTC] Invalid surface token: "${surface}". Expected: ${available.surfaces.join(', ')}`);
+  if (!v) throw new TypeError(`[SMNTC] Invalid vibe token: "${vibe}". Expected: ${available.vibes.join(', ')}`);
+  if (!r) throw new TypeError(`[SMNTC] Invalid reactivity token: "${reactivity}". Expected: ${available.reactivities.join(', ')}`);
+  if (!f) throw new TypeError(`[SMNTC] Invalid fidelity token: "${fidelity}". Expected: ${available.fidelities.join(', ')}`);
+  if (!p) throw new TypeError(`[SMNTC] Invalid palette token: "${palette}". Expected: ${available.palettes.join(', ')}`);
 
   return {
     surfaceMode:        s.mode,
@@ -198,4 +98,3 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
-export { SURFACE_MAP, VIBE_MAP, REACTIVITY_MAP, FIDELITY_MAP, PALETTE_MAP };

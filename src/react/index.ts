@@ -13,3 +13,18 @@
 
 export { SMNTCSurface } from './SMNTCSurface';
 export { useSMNTC } from './useSMNTC';
+export { useSMNTCMaterial } from './useSMNTCMaterial';
+export { SMNTCMaterial } from '../material/SMNTCMaterial';
+
+// Auto-register <smntcMaterial /> when R3F is available.
+try {
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
+	const Fiber = require('@react-three/fiber');
+	if (Fiber?.extend) {
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
+		const { SMNTCMaterial } = require('../material/SMNTCMaterial');
+		Fiber.extend({ SMNTCMaterial });
+	}
+} catch {
+	// React or R3F missing — ignore; the component will throw on use.
+}

@@ -17,6 +17,9 @@
   "engines": {
     "node": ">=18"
   },
+  "bin": {
+    "smntc": "dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -27,6 +30,11 @@
       "types": "./dist/react/index.d.ts",
       "import": "./dist/react/index.mjs",
       "require": "./dist/react/index.js"
+    },
+    "./web": {
+      "types": "./dist/web/index.d.ts",
+      "import": "./dist/web/index.mjs",
+      "default": "./dist/web/index.mjs"
     }
   },
   "files": [
@@ -40,8 +48,8 @@
     "smntc.schema.json"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/react/index.ts --format esm,cjs --dts --clean",
-    "dev": "tsup src/index.ts src/react/index.ts --format esm,cjs --dts --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

@@ -74,6 +74,60 @@ function App() {
 }
 ```
 
+### R3F Material Element
+
+```tsx
+import React from 'react';
+import { Canvas, extend, useFrame } from '@react-three/fiber';
+import { SMNTCMaterial } from 'smntc';
+
+extend({ SMNTCMaterial });
+
+function Scene() {
+  const materialRef = React.useRef<SMNTCMaterial>(null);
+
+  useFrame((_state, delta) => {
+    materialRef.current?.update(delta);
+  });
+
+  return (
+    <mesh>
+      <planeGeometry args={[1, 1, 128, 128]} />
+      <smntcMaterial
+        ref={materialRef}
+        surface="fluid"
+        vibe="calm"
+        palette="arctic"
+      />
+    </mesh>
+  );
+}
+```
+
+### Web Component (No Framework)
+
+```html
+<script type="module">
+  import 'https://unpkg.com/smntc/dist/web/index.mjs';
+</script>
+
+<smntc-surface
+  style="width: 100%; height: 60vh; display: block;"
+  surface="topographic"
+  vibe="calm"
+  palette="monochrome"
+  reactivity="magnetic"
+></smntc-surface>
+```
+
+### CLI
+
+```bash
+npx smntc init       # Create smntc.config.json
+npx smntc add hero   # Create a preset template
+npx smntc preview    # Copy demo to smntc-preview/
+```
+
 ---
 
 ## Semantic Tokens
@@ -191,6 +245,26 @@ const kernel = useSMNTC({ surface: 'fluid', vibe: 'calm' });
 
 ---
 
+## Plugins & Presets
+
+Extend SMNTC at runtime by registering new token definitions or presets.
+
+```typescript
+import { defineSurface, definePreset, applyPreset } from 'smntc';
+
+defineSurface('aurora', { mode: 4, noiseScale: 1.8 });
+
+const corporate = definePreset({
+  name: 'corporate',
+  defaults: { surface: 'topographic', vibe: 'stable', palette: 'monochrome' },
+  allowedSurfaces: ['topographic', 'fluid'],
+});
+
+const config = applyPreset(corporate, { vibe: 'calm' });
+```
+
+---
+
 ## Architecture
 
 ```
@@ -266,20 +340,28 @@ smntc/
 │   ├── semantic/
 │   │   ├── tokens.ts               # Type definitions + const arrays
 │   │   ├── dictionary.ts           # Token → constant mapping
+│   │   ├── registry.ts             # Token registry + presets
 │   │   └── transformer.ts          # Semantic middleware
 │   ├── physics/
 │   │   └── spring.ts               # Damped harmonic oscillator
+│   ├── material/
+│   │   └── SMNTCMaterial.ts         # ShaderMaterial subclass
 │   ├── reactivity/
 │   │   └── input-proxy.ts          # Pointer/touch capture
 │   ├── performance/
 │   │   └── auto-scaler.ts          # Adaptive LOD controller
+│   ├── web/
+│   │   ├── SMNTCSurfaceElement.ts   # Web Component implementation
+│   │   └── index.ts                 # Web Component entry
 │   └── react/
 │       ├── index.ts                # React barrel export
 │       ├── useSMNTC.ts             # Hook
+│       ├── useSMNTCMaterial.ts      # Material hook
 │       └── SMNTCSurface.ts         # Declarative component
 ├── examples/
 │   └── basic/
 │       └── index.html              # Zero-build-step demo
+├── src/cli/                         # CLI entry
 ├── .github/
 │   ├── workflows/ci.yml            # GitHub Actions CI
 │   └── ISSUE_TEMPLATE/             # Bug & feature templates

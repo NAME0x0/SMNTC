@@ -62,6 +62,52 @@ function App() {
 }
 ```
 
+## R3F Material Element
+
+```tsx
+import React from 'react';
+import { extend, useFrame } from '@react-three/fiber';
+import { SMNTCMaterial } from 'smntc';
+
+extend({ SMNTCMaterial });
+
+function Surface() {
+  const mat = React.useRef<SMNTCMaterial>(null);
+  useFrame((_state, delta) => mat.current?.update(delta));
+
+  return (
+    <mesh>
+      <planeGeometry args={[1, 1, 128, 128]} />
+      <smntcMaterial ref={mat} surface="fluid" vibe="calm" palette="arctic" />
+    </mesh>
+  );
+}
+```
+
+## Web Component (No Framework)
+
+```html
+<script type="module">
+  import 'https://unpkg.com/smntc/dist/web/index.mjs';
+</script>
+
+<smntc-surface
+  style="width: 100%; height: 60vh; display: block;"
+  surface="topographic"
+  vibe="calm"
+  palette="monochrome"
+  reactivity="magnetic"
+></smntc-surface>
+```
+
+## CLI
+
+```bash
+npx smntc init
+npx smntc add hero
+npx smntc preview
+```
+
 ## Key Methods
 
 - `kernel.setVibe('agitated')` — Spring-animated vibe transition

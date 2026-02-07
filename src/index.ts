@@ -25,6 +25,33 @@ export {
   PALETTES,
 } from './semantic/tokens';
 
+export {
+  listTokens,
+  defineSurface,
+  defineVibe,
+  defineReactivity,
+  defineFidelity,
+  definePalette,
+  registerSurface,
+  registerVibe,
+  registerReactivity,
+  registerFidelity,
+  registerPalette,
+  definePreset,
+  applyPreset,
+  getPreset,
+  listPresets,
+} from './semantic/registry';
+export type {
+  SurfaceDefinition,
+  VibeDefinition,
+  ReactivityDefinition,
+  FidelityDefinition,
+  PaletteDefinition,
+  PresetDefinition,
+  TokenRegistrySnapshot,
+} from './semantic/registry';
+
 export { transform, resolveConstants, DEFAULTS } from './semantic/transformer';
 
 // Physics
@@ -44,3 +71,7 @@ export { InputProxy } from './reactivity/input-proxy';
 
 // Auto-Scaler
 export { AutoScaler } from './performance/auto-scaler';
+
+// Material (advanced use / R3F extend)
+export { SMNTCMaterial } from './material/SMNTCMaterial';
+export type { SMNTCMaterialOptions } from './material/SMNTCMaterial';
