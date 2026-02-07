@@ -5,6 +5,18 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NAME0x0/SMNTC.git"
+  },
+  "homepage": "https://github.com/NAME0x0/SMNTC#readme",
+  "bugs": {
+    "url": "https://github.com/NAME0x0/SMNTC/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -20,13 +32,20 @@
   "files": [
     "dist",
     "README.md",
-    "SMNTC-SPEC.md"
+    "SMNTC-SPEC.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "llms.txt",
+    "llms-full.txt",
+    "smntc.schema.json"
   ],
   "scripts": {
     "build": "tsup src/index.ts src/react/index.ts --format esm,cjs --dts --clean",
     "dev": "tsup src/index.ts src/react/index.ts --format esm,cjs --dts --watch",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "webgl",
@@ -62,6 +81,7 @@
     "@types/three": "^0.160.0",
     "three": "^0.170.0",
     "tsup": "^8.0.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.18"
   }
 }

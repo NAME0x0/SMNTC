@@ -1,0 +1,76 @@
+# SMNTC
+
+> Semantic Engine for Motion, Animation, and Numerical Topographic Interactivity & Composition.
+> Abstracts WebGL shader complexity into a Tokenized Intent Schema.
+> Describe the *meaning* — the engine provides the *motion*.
+
+SMNTC converts high-level semantic tokens into GPU-optimized GLSL shader programs for Three.js.
+Instead of writing shader math, you declare intent using human-readable tokens like
+`surface: 'fluid'`, `vibe: 'calm'`, `palette: 'arctic'`.
+
+## Docs
+
+- [README](https://github.com/NAME0x0/SMNTC/blob/main/README.md): Quick start, token tables, API reference
+- [SMNTC-SPEC](https://github.com/NAME0x0/SMNTC/blob/main/SMNTC-SPEC.md): Full technical specification
+- [LLMs Full Context](https://github.com/NAME0x0/SMNTC/blob/main/llms-full.txt): Complete API with all tokens, types, and examples
+
+## Install
+
+```bash
+npm install smntc three
+```
+
+## Core Concept
+
+All configuration uses a single `SMNTCConfig` object with five semantic token categories:
+
+- **surface**: `'topographic'` | `'crystalline'` | `'fluid'` | `'glitch'`
+- **vibe**: `'stable'` | `'calm'` | `'agitated'` | `'chaotic'`
+- **reactivity**: `'static'` | `'magnetic'` | `'repel'` | `'shockwave'`
+- **fidelity**: `'low'` | `'medium'` | `'high'` | `'ultra'`
+- **palette**: `'monochrome'` | `'ember'` | `'arctic'` | `'neon'` | `'phantom'`
+
+Plus numeric overrides: `intensity` (0-2), `speed` (0-5), `contourLines` (4-64).
+
+## Minimal Example (Vanilla Three.js)
+
+```typescript
+import { SMNTCKernel } from 'smntc';
+import * as THREE from 'three';
+
+const geometry = new THREE.PlaneGeometry(4, 4, 128, 128);
+const mesh = new THREE.Mesh(geometry);
+scene.add(mesh);
+
+const kernel = new SMNTCKernel({ surface: 'fluid', vibe: 'calm', palette: 'monochrome' });
+kernel.apply(mesh, camera, renderer.domElement);
+kernel.start(renderer, scene, camera);
+```
+
+## Minimal Example (React-Three-Fiber)
+
+```tsx
+import { Canvas } from '@react-three/fiber';
+import { SMNTCSurface } from 'smntc/react';
+
+function App() {
+  return (
+    <Canvas>
+      <SMNTCSurface surface="topographic" vibe="calm" reactivity="magnetic" palette="arctic" />
+    </Canvas>
+  );
+}
+```
+
+## Key Methods
+
+- `kernel.setVibe('agitated')` — Spring-animated vibe transition
+- `kernel.setSurface('crystalline')` — Switch surface mode
+- `kernel.setPalette('neon')` — Spring-animated color transition
+- `kernel.setReactivity('shockwave')` — Change interaction model
+- `kernel.configure({ vibe: 'chaotic', palette: 'ember' })` — Bulk update
+- `kernel.dispose()` — Clean up all GPU/DOM resources
+
+## Optional
+
+- [JSON Schema](https://github.com/NAME0x0/SMNTC/blob/main/smntc.schema.json): Machine-validatable config schema

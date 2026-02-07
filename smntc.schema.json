@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/NAME0x0/SMNTC/blob/main/smntc.schema.json",
+  "title": "SMNTCConfig",
+  "description": "Configuration schema for the SMNTC semantic shader engine. Describes *intent* — the engine resolves it to GPU instructions.",
+  "type": "object",
+  "properties": {
+    "surface": {
+      "type": "string",
+      "enum": ["topographic", "crystalline", "fluid", "glitch"],
+      "default": "topographic",
+      "description": "Visual displacement pattern. topographic = contour lines (sine), crystalline = faceted clusters (Voronoi), fluid = organic flow (Simplex), glitch = quantized random."
+    },
+    "vibe": {
+      "type": "string",
+      "enum": ["stable", "calm", "agitated", "chaotic"],
+      "default": "calm",
+      "description": "Motion character. stable = near-static breathing, calm = slow rhythmic, agitated = high-frequency erratic, chaotic = stochastic bursts."
+    },
+    "reactivity": {
+      "type": "string",
+      "enum": ["static", "magnetic", "repel", "shockwave"],
+      "default": "static",
+      "description": "Cursor interaction model. static = none, magnetic = pull toward cursor, repel = push away, shockwave = click triggers radial ripple."
+    },
+    "fidelity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "ultra"],
+      "default": "medium",
+      "description": "Geometry density. low = 64×64 (mobile), medium = 128×128, high = 256×256 (desktop), ultra = 512×512 (presentation)."
+    },
+    "palette": {
+      "type": "string",
+      "enum": ["monochrome", "ember", "arctic", "neon", "phantom"],
+      "default": "monochrome",
+      "description": "Color scheme. monochrome = white/black, ember = warm orange, arctic = cool blue, neon = green/magenta, phantom = grey-purple."
+    },
+    "wireframe": {
+      "type": "boolean",
+      "default": true,
+      "description": "Render as wireframe (true) or solid fill (false)."
+    },
+    "intensity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2,
+      "default": 1.0,
+      "description": "Global amplitude multiplier for vertex displacement."
+    },
+    "speed": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5,
+      "default": 1.0,
+      "description": "Global speed multiplier for animation playback."
+    },
+    "contourLines": {
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 64,
+      "default": 16,
+      "description": "Contour line count. Only affects surface: 'topographic'."
+    },
+    "thermalGuard": {
+      "type": "boolean",
+      "default": true,
+      "description": "Auto-pause animation when the browser tab is hidden to save battery."
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "surface": "topographic",
+      "vibe": "calm",
+      "palette": "monochrome",
+      "wireframe": true
+    },
+    {
+      "surface": "fluid",
+      "vibe": "agitated",
+      "reactivity": "magnetic",
+      "palette": "neon",
+      "fidelity": "high"
+    },
+    {
+      "surface": "crystalline",
+      "vibe": "chaotic",
+      "palette": "ember",
+      "intensity": 1.5,
+      "speed": 2.0
+    }
+  ]
+}

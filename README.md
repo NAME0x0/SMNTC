@@ -264,7 +264,7 @@ smntc/
 │   │       ├── uber.vert.ts        # Vertex shader (GLSL as TS string)
 │   │       └── uber.frag.ts        # Fragment shader
 │   ├── semantic/
-│   │   ├── tokens.ts               # Type definitions
+│   │   ├── tokens.ts               # Type definitions + const arrays
 │   │   ├── dictionary.ts           # Token → constant mapping
 │   │   └── transformer.ts          # Semantic middleware
 │   ├── physics/
@@ -280,10 +280,40 @@ smntc/
 ├── examples/
 │   └── basic/
 │       └── index.html              # Zero-build-step demo
+├── .github/
+│   ├── workflows/ci.yml            # GitHub Actions CI
+│   └── ISSUE_TEMPLATE/             # Bug & feature templates
 ├── SMNTC-SPEC.md                   # Technical specification
+├── llms.txt                        # LLM context (concise)
+├── llms-full.txt                   # LLM context (complete)
+├── smntc.schema.json               # JSON Schema for SMNTCConfig
+├── CHANGELOG.md                    # Release changelog
+├── CONTRIBUTING.md                 # Contribution guide
+├── LICENSE                         # MIT License
 ├── package.json
 ├── tsconfig.json
+├── vitest.config.ts
 └── README.md
+```
+
+---
+
+## For LLMs
+
+SMNTC is designed to be consumed by both humans and language models. The following files are
+optimized for LLM context injection:
+
+| File | Purpose |
+|------|---------|
+| [`llms.txt`](llms.txt) | Concise context — enough to generate correct SMNTC code |
+| [`llms-full.txt`](llms-full.txt) | Complete API surface, all valid tokens, patterns, and gotchas |
+| [`smntc.schema.json`](smntc.schema.json) | Machine-validatable JSON Schema for `SMNTCConfig` |
+
+Token values are also exported as runtime constants for programmatic discovery:
+
+```typescript
+import { SURFACES, VIBES, REACTIVITIES, FIDELITIES, PALETTES } from 'smntc';
+// Each is a frozen readonly array of valid string values
 ```
 
 ---
@@ -299,6 +329,13 @@ See [SMNTC-SPEC.md](SMNTC-SPEC.md) for the full technical specification includin
 
 ---
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, architecture overview, and the
+process for adding new semantic tokens.
+
+---
+
 ## License
 
-MIT
+[MIT](LICENSE)

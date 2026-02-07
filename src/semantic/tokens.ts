@@ -4,6 +4,32 @@
 // Interactivity & Composition
 // ============================================================================
 
+// ---------------------------------------------------------------------------
+// Runtime-enumerable token value arrays (as const).
+// These exist so that tooling, LLMs, and consumers can programmatically
+// discover every valid value without parsing TypeScript union types.
+// The union types below are derived from these arrays for single-source truth.
+// ---------------------------------------------------------------------------
+
+/** All valid surface tokens. */
+export const SURFACES = Object.freeze(['topographic', 'crystalline', 'fluid', 'glitch'] as const);
+
+/** All valid vibe tokens. */
+export const VIBES = Object.freeze(['stable', 'calm', 'agitated', 'chaotic'] as const);
+
+/** All valid reactivity tokens. */
+export const REACTIVITIES = Object.freeze(['static', 'magnetic', 'repel', 'shockwave'] as const);
+
+/** All valid fidelity tokens. */
+export const FIDELITIES = Object.freeze(['low', 'medium', 'high', 'ultra'] as const);
+
+/** All valid palette tokens. */
+export const PALETTES = Object.freeze(['monochrome', 'ember', 'arctic', 'neon', 'phantom'] as const);
+
+// ---------------------------------------------------------------------------
+// Union types — derived from the const arrays above.
+// ---------------------------------------------------------------------------
+
 /**
  * Surface identity — defines the visual structure of the mesh displacement.
  *
@@ -12,7 +38,7 @@
  * - `fluid`: Organic, continuous surface displacement (Simplex noise).
  * - `glitch`: Step-function displacement with randomized UV-shifting.
  */
-export type Surface = 'topographic' | 'crystalline' | 'fluid' | 'glitch';
+export type Surface = (typeof SURFACES)[number];
 
 /**
  * Kinetic vibe — defines the motion physics and frequency character.
@@ -22,7 +48,7 @@ export type Surface = 'topographic' | 'crystalline' | 'fluid' | 'glitch';
  * - `agitated`: High-frequency, erratic shifts (ω ≈ 2.5).
  * - `chaotic`: Stochastic vertex bursts; zero damping (ω ≈ 5.0+).
  */
-export type Vibe = 'stable' | 'calm' | 'agitated' | 'chaotic';
+export type Vibe = (typeof VIBES)[number];
 
 /**
  * Interaction model — defines how the surface responds to external stimuli.
@@ -32,7 +58,7 @@ export type Vibe = 'stable' | 'calm' | 'agitated' | 'chaotic';
  * - `repel`: Surface pushes away from the cursor.
  * - `shockwave`: Click events trigger a radial ripple.
  */
-export type Reactivity = 'static' | 'magnetic' | 'repel' | 'shockwave';
+export type Reactivity = (typeof REACTIVITIES)[number];
 
 /**
  * Visual fidelity — controls vertex density and rendering quality.
@@ -42,7 +68,7 @@ export type Reactivity = 'static' | 'magnetic' | 'repel' | 'shockwave';
  * - `high`: 256×256 segments; desktop-quality.
  * - `ultra`: 512×512 segments; presentation-grade.
  */
-export type Fidelity = 'low' | 'medium' | 'high' | 'ultra';
+export type Fidelity = (typeof FIDELITIES)[number];
 
 /**
  * Color palette preset — defines the chromatic identity.
@@ -53,7 +79,7 @@ export type Fidelity = 'low' | 'medium' | 'high' | 'ultra';
  * - `neon`: High-contrast cyberpunk greens and magentas.
  * - `phantom`: Muted grey-purple stealth aesthetic.
  */
-export type Palette = 'monochrome' | 'ember' | 'arctic' | 'neon' | 'phantom';
+export type Palette = (typeof PALETTES)[number];
 
 /**
  * The complete SMNTC configuration token set.

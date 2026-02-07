@@ -1,0 +1,326 @@
+# SMNTC — Full LLM Context
+
+> Semantic Engine for Motion, Animation, and Numerical Topographic Interactivity & Composition.
+> Version: 1.0.0 | License: MIT | Peer dependency: three >=0.150.0
+
+This file contains the complete API surface of SMNTC for LLM context injection.
+Use this to generate correct SMNTC code without hallucinating invalid tokens or methods.
+
+---
+
+## Installation
+
+```bash
+npm install smntc three
+# React integration (optional):
+npm install @react-three/fiber react
+```
+
+Imports:
+```typescript
+import { SMNTCKernel } from 'smntc';                    // Core
+import { SMNTCSurface, useSMNTC } from 'smntc/react';   // React
+```
+
+---
+
+## SMNTCConfig — The Input Interface
+
+Every SMNTC API accepts this configuration object. All fields are optional with sensible defaults.
+
+```typescript
+interface SMNTCConfig {
+  surface?: 'topographic' | 'crystalline' | 'fluid' | 'glitch';       // default: 'topographic'
+  vibe?: 'stable' | 'calm' | 'agitated' | 'chaotic';                  // default: 'calm'
+  reactivity?: 'static' | 'magnetic' | 'repel' | 'shockwave';         // default: 'static'
+  fidelity?: 'low' | 'medium' | 'high' | 'ultra';                     // default: 'medium'
+  palette?: 'monochrome' | 'ember' | 'arctic' | 'neon' | 'phantom';   // default: 'monochrome'
+  wireframe?: boolean;           // default: true
+  intensity?: number;            // range: [0, 2],  default: 1.0
+  speed?: number;                // range: [0, 5],  default: 1.0
+  contourLines?: number;         // range: [4, 64], default: 16
+  thermalGuard?: boolean;        // default: true (pauses when tab hidden)
+}
+```
+
+### Valid Token Values (exhaustive)
+
+SURFACES:   topographic, crystalline, fluid, glitch
+VIBES:      stable, calm, agitated, chaotic
+REACTIVITIES: static, magnetic, repel, shockwave
+FIDELITIES: low, medium, high, ultra
+PALETTES:   monochrome, ember, arctic, neon, phantom
+
+These are the ONLY valid values. Any other string will throw a TypeError at runtime.
+
+---
+
+## Token Semantics — What Each Token Does
+
+### Surface (visual displacement pattern)
+- `topographic` → Layered sine waves creating contour-line terrain
+- `crystalline` → Sharp faceted clusters using Voronoi noise
+- `fluid` → Organic continuous flow using Simplex noise
+- `glitch` → Quantized step-function with random UV shifts
+
+### Vibe (motion character)
+- `stable` → Near-static, subtle breathing (ω ≈ 0.1 Hz)
+- `calm` → Slow rhythmic oscillation (ω ≈ 0.5 Hz)
+- `agitated` → High-frequency erratic shifts (ω ≈ 2.5 Hz)
+- `chaotic` → Stochastic vertex bursts, zero damping (ω ≈ 5.0 Hz)
+
+### Reactivity (cursor interaction)
+- `static` → No response to pointer
+- `magnetic` → Surface pulls toward cursor position
+- `repel` → Surface pushes away from cursor
+- `shockwave` → Click triggers a radial ripple wave
+
+### Palette (color identity)
+- `monochrome` → White on black (primary: #FFFFFF, accent: #888888)
+- `ember` → Warm orange/amber (primary: #FF6600, accent: #FFaa00)
+- `arctic` → Cool blue/white (primary: #88CCFF, accent: #FFFFFF)
+- `neon` → Cyberpunk green/magenta (primary: #00FF88, accent: #FF00FF)
+- `phantom` → Muted grey-purple (primary: #8888AA, accent: #666688)
+
+### Fidelity (geometry density)
+- `low` → 64×64 segments (mobile)
+- `medium` → 128×128 segments (default)
+- `high` → 256×256 segments (desktop)
+- `ultra` → 512×512 segments (presentation)
+
+---
+
+## SMNTCKernel — Core API
+
+### Constructor
+
+```typescript
+const kernel = new SMNTCKernel(config: SMNTCConfig);
+```
+
+Creates the engine. Does NOT render anything until `apply()` is called.
+
+### Methods
+
+```typescript
+// Setup
+kernel.apply(mesh: THREE.Mesh, camera?: THREE.Camera, domElement?: HTMLElement): void
+// Injects the SMNTC ShaderMaterial onto the mesh. Optionally wires cursor reactivity.
+
+kernel.start(renderer?: THREE.WebGLRenderer, scene?: THREE.Scene, camera?: THREE.Camera): void
+// Starts a self-managed requestAnimationFrame loop.
+// If you have your own loop, call kernel.update() instead.
+
+kernel.stop(): void
+// Stops the self-managed animation loop.
+
+kernel.update(): void
+// Advances one frame. Call this inside your own rAF loop instead of start().
+
+// Runtime state changes (all spring-animated)
+kernel.setVibe(vibe: 'stable' | 'calm' | 'agitated' | 'chaotic'): void
+kernel.setSurface(surface: 'topographic' | 'crystalline' | 'fluid' | 'glitch'): void
+kernel.setReactivity(reactivity: 'static' | 'magnetic' | 'repel' | 'shockwave'): void
+kernel.setPalette(palette: 'monochrome' | 'ember' | 'arctic' | 'neon' | 'phantom'): void
+kernel.setIntensity(value: number): void    // [0, 2]
+kernel.setSpeed(value: number): void        // [0, 5]
+kernel.configure(config: Partial<SMNTCConfig>): void  // Bulk update any properties
+
+// Query
+kernel.getMaterial(): THREE.ShaderMaterial
+kernel.getBackgroundColor(): THREE.Color  // Returns palette's background color
+
+// Cleanup
+kernel.dispose(): void
+// Releases ShaderMaterial, stops animation, removes event listeners.
+// MUST be called to prevent memory leaks.
+```
+
+### Constructor Options (SMNTCKernelOptions)
+
+`SMNTCKernelOptions` extends `SMNTCConfig` with no additional fields currently.
+
+---
+
+## React API (smntc/react)
+
+Requires peer dependencies: `react` >=18, `@react-three/fiber` >=8, `three` >=0.150
+
+### SMNTCSurface Component
+
+```tsx
+import { SMNTCSurface } from 'smntc/react';
+
+<SMNTCSurface
+  // SMNTCConfig tokens (all optional)
+  surface="fluid"
+  vibe="calm"
+  reactivity="magnetic"
+  palette="monochrome"
+  fidelity="medium"
+  wireframe={true}
+  intensity={1.0}
+  speed={1.0}
+  contourLines={16}
+  thermalGuard={true}
+
+  // Geometry (optional)
+  geometry="plane"              // 'plane' | 'sphere' | 'torus' (default: 'plane')
+
+  // Standard R3F mesh props
+  position={[0, 0, 0]}
+  rotation={[-Math.PI / 2, 0, 0]}
+  scale={[4, 4, 4]}
+/>
+```
+
+Handles geometry creation, material injection, animation loop, and cleanup automatically.
+
+### useSMNTC Hook
+
+```typescript
+import { useSMNTC } from 'smntc/react';
+
+function MyComponent() {
+  const kernel = useSMNTC({
+    surface: 'topographic',
+    vibe: 'agitated',
+    palette: 'neon',
+  });
+
+  // kernel is an SMNTCKernel instance.
+  // Apply it to your own mesh via kernel.apply(meshRef.current, ...).
+  // The hook manages disposal on unmount.
+}
+```
+
+---
+
+## Advanced Exports
+
+For users who need lower-level access:
+
+```typescript
+import {
+  // Token resolution
+  resolveConstants,    // (config: SMNTCConfig) => ShaderConstants
+  transform,           // @deprecated — alias for resolveConstants
+  DEFAULTS,            // Default SMNTCConfig values
+
+  // Token value enumerations (const arrays)
+  SURFACES,            // readonly ['topographic', 'crystalline', 'fluid', 'glitch']
+  VIBES,               // readonly ['stable', 'calm', 'agitated', 'chaotic']
+  REACTIVITIES,        // readonly ['static', 'magnetic', 'repel', 'shockwave']
+  FIDELITIES,          // readonly ['low', 'medium', 'high', 'ultra']
+  PALETTES,            // readonly ['monochrome', 'ember', 'arctic', 'neon', 'phantom']
+
+  // Physics
+  Spring,              // Damped harmonic oscillator
+  SpringBank,          // Named collection of springs
+
+  // Shaders (raw GLSL strings)
+  UBER_VERTEX_SHADER,
+  UBER_FRAGMENT_SHADER,
+
+  // Uniform helpers
+  createUniforms,      // (constants: ShaderConstants) => Record<string, IUniform>
+  patchUniforms,       // (uniforms, constants) => void (for custom animation loops)
+
+  // Subsystems
+  InputProxy,          // Pointer/touch capture for cursor reactivity
+  AutoScaler,          // Adaptive fidelity controller
+} from 'smntc';
+```
+
+---
+
+## Common Patterns
+
+### Pattern: Landing page hero background
+
+```typescript
+const kernel = new SMNTCKernel({
+  surface: 'topographic',
+  vibe: 'calm',
+  palette: 'monochrome',
+  fidelity: 'high',
+  wireframe: true,
+});
+kernel.apply(mesh, camera, renderer.domElement);
+kernel.start(renderer, scene, camera);
+// Renders a calm, wireframe topographic wave — classic tech aesthetic
+```
+
+### Pattern: Interactive product showcase
+
+```typescript
+const kernel = new SMNTCKernel({
+  surface: 'fluid',
+  vibe: 'stable',
+  reactivity: 'magnetic',
+  palette: 'arctic',
+  intensity: 0.5,
+});
+// Surface subtly follows the cursor — premium feel
+```
+
+### Pattern: Transition on user action
+
+```typescript
+// Start calm
+const kernel = new SMNTCKernel({ vibe: 'calm', palette: 'monochrome' });
+
+// On button click — spring-animate to new state
+document.getElementById('cta').addEventListener('click', () => {
+  kernel.setVibe('agitated');
+  kernel.setPalette('neon');
+});
+// Transition is physics-based (damped harmonic oscillator), not CSS
+```
+
+### Pattern: React with dynamic props
+
+```tsx
+function Hero({ isActive }: { isActive: boolean }) {
+  return (
+    <Canvas>
+      <SMNTCSurface
+        surface="fluid"
+        vibe={isActive ? 'agitated' : 'calm'}
+        palette={isActive ? 'neon' : 'monochrome'}
+        reactivity={isActive ? 'magnetic' : 'static'}
+      />
+    </Canvas>
+  );
+}
+// Props changes trigger spring-animated transitions automatically
+```
+
+### Pattern: Custom animation loop (no start())
+
+```typescript
+const kernel = new SMNTCKernel({ surface: 'topographic', vibe: 'calm' });
+kernel.apply(mesh, camera, canvas);
+
+function animate() {
+  requestAnimationFrame(animate);
+  kernel.update();  // Advance springs + write uniforms
+  renderer.render(scene, camera);
+}
+animate();
+```
+
+---
+
+## Constraints & Gotchas
+
+1. `apply()` must be called before `start()` or `update()`.
+2. Always call `dispose()` when removing the surface (SPA route change, unmount, etc.).
+3. `intensity` is clamped to [0, 2]. Values outside this range are ignored.
+4. `speed` is clamped to [0, 5].
+5. `contourLines` only affects `surface: 'topographic'`.
+6. The React component handles lifecycle automatically — no manual dispose needed.
+7. `thermalGuard: true` pauses the animation loop when the browser tab is hidden.
+8. Fidelity changes rebuild the geometry (brief frame skip expected).
+9. All string tokens are case-sensitive and lowercase only.
+10. `three` is a peer dependency — it is NOT bundled. Consumers must install it.

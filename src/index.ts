@@ -17,6 +17,14 @@ export type {
   ShaderConstants,
 } from './semantic/tokens';
 
+export {
+  SURFACES,
+  VIBES,
+  REACTIVITIES,
+  FIDELITIES,
+  PALETTES,
+} from './semantic/tokens';
+
 export { transform, resolveConstants, DEFAULTS } from './semantic/transformer';
 
 // Physics
