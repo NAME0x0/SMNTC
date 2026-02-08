@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMNTC — Hero Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #07080c; color: #f5f7ff; font-family: "Space Grotesk", sans-serif; overflow: hidden; }
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .hero { position: relative; z-index: 2; padding: 12vh 8vw; max-width: 860px; }
+    .tag { font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: #7ef3ff; margin-bottom: 16px; }
+    h1 { font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 1.02; margin-bottom: 16px; }
+    p { color: rgba(245, 247, 255, 0.7); font-size: 1.1rem; margin-bottom: 28px; }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    button { border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #f5f7ff; padding: 10px 18px; border-radius: 999px; cursor: pointer; transition: 0.2s ease; }
+    button:hover, button.active { border-color: #7ef3ff; color: #7ef3ff; background: rgba(126,243,255,0.15); }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div class="hero">
+    <div class="tag">SMNTC HERO</div>
+    <h1>Semantic motion that sells the story.</h1>
+    <p>Drop in a calm, premium wave surface without touching GLSL.</p>
+    <div class="actions">
+      <button data-vibe="calm" class="active">Calm</button>
+      <button data-vibe="agitated">Agitated</button>
+      <button data-vibe="chaotic">Chaotic</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "smntc": "../../dist/index.mjs"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { SMNTCKernel } from 'smntc';
+
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 4);
+
+    const geometry = new THREE.PlaneGeometry(4, 4, 160, 160);
+    const mesh = new THREE.Mesh(geometry);
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add(mesh);
+
+    const kernel = new SMNTCKernel({
+      surface: 'fluid',
+      vibe: 'calm',
+      palette: 'arctic',
+      reactivity: 'magnetic',
+      fidelity: 'medium',
+      wireframe: true,
+    });
+
+    kernel.apply(mesh, camera, renderer.domElement);
+    kernel.start(renderer, scene, camera);
+
+    function resize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    const buttons = document.querySelectorAll('button[data-vibe]');
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        buttons.forEach((b) => b.classList.remove('active'));
+        button.classList.add('active');
+        kernel.setVibe(button.dataset.vibe);
+      });
+    });
+  </script>
+</body>
+</html>

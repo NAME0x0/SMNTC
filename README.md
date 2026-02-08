@@ -6,9 +6,15 @@
 
 Abstracting WebGL complexity into a Tokenized Intent Schema.
 
+[![npm](https://img.shields.io/npm/v/smntc.svg?logo=npm&color=cb0000)](https://www.npmjs.com/package/smntc)
+[![npm downloads](https://img.shields.io/npm/dm/smntc.svg)](https://www.npmjs.com/package/smntc)
+[![CI](https://github.com/NAME0x0/SMNTC/actions/workflows/ci.yml/badge.svg)](https://github.com/NAME0x0/SMNTC/actions/workflows/ci.yml)
+[![Bundle size](https://img.shields.io/bundlephobia/minzip/smntc)](https://bundlephobia.com/package/smntc)
 [![License: MIT](https://img.shields.io/badge/License-MIT-white.svg)](LICENSE)
 [![Three.js](https://img.shields.io/badge/Three.js-≥0.150-black.svg)](https://threejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4+-3178C6.svg)](https://www.typescriptlang.org/)
+[![JSR](https://img.shields.io/badge/JSR-%40smntc%2Fcore-0f172a)](https://jsr.io/@smntc/core)
+[![Open in StackBlitz](https://img.shields.io/badge/StackBlitz-Open-blue?logo=stackblitz)](https://stackblitz.com/github/NAME0x0/SMNTC)
 
 <br/>
 
@@ -35,6 +41,32 @@ Creating topographic/parametric wave animations for the web currently requires:
 
 ```bash
 npm install smntc three
+```
+
+```bash
+# JSR (Deno / Bun)
+deno add jsr:@smntc/core
+```
+
+### CDN (No Build)
+
+```html
+<script type="module">
+  import * as THREE from 'https://unpkg.com/three@0.170.0/build/three.module.js';
+  import { SMNTCKernel } from 'https://unpkg.com/smntc/dist/index.mjs';
+
+  const geometry = new THREE.PlaneGeometry(4, 4, 128, 128);
+  const mesh = new THREE.Mesh(geometry);
+  // ...add to scene
+  const kernel = new SMNTCKernel({ surface: 'fluid', vibe: 'calm' });
+  kernel.apply(mesh, camera, renderer.domElement);
+  kernel.start(renderer, scene, camera);
+</script>
+```
+
+```html
+<script src="https://unpkg.com/smntc/dist/web/index.iife.global.js"></script>
+<smntc-surface style="width:100%;height:60vh;display:block" surface="topographic"></smntc-surface>
 ```
 
 ### 5 Lines to Topographic Waves
@@ -303,14 +335,32 @@ const config = applyPreset(corporate, { vibe: 'calm' });
 
 ---
 
+## Performance Tips
+
+- **Fidelity first:** Start with `fidelity="medium"` and only move to `high`/`ultra` when needed.
+- **Use auto-scaling:** Keep `thermalGuard: true` and allow the auto-scaler to protect FPS.
+- **Wireframe cost:** `wireframe: true` looks great but is more expensive; disable for dense scenes.
+- **Manual loop:** For advanced scenes, call `kernel.update()` in your own render loop for tighter control.
+- **Static mode:** Set `reactivity="static"` when interactivity is not needed.
+
+---
+
 ## Running the Demo
 
 Open `examples/basic/index.html` in any browser. No build step required — loads Three.js from CDN.
+Also available: `examples/hero/`, `examples/ambient/`, `examples/product/`, `examples/web-component/`.
 
 ```bash
 # Or serve locally:
 npx serve examples/basic
 ```
+
+---
+
+## Templates & Playgrounds
+
+- **Vanilla starter:** `templates/vanilla` (Vite + Three.js + SMNTC)
+- **StackBlitz:** https://stackblitz.com/github/NAME0x0/SMNTC
 
 ---
 
@@ -359,16 +409,32 @@ smntc/
 │       ├── useSMNTCMaterial.ts      # Material hook
 │       └── SMNTCSurface.ts         # Declarative component
 ├── examples/
-│   └── basic/
-│       └── index.html              # Zero-build-step demo
+│   ├── basic/
+│   │   └── index.html              # Zero-build-step demo
+│   ├── hero/
+│   │   └── index.html              # Hero background demo
+│   ├── ambient/
+│   │   └── index.html              # Calm dashboard demo
+│   ├── product/
+│   │   └── index.html              # Palette-switching demo
+│   └── web-component/
+│       └── index.html              # <smntc-surface> demo
+├── templates/
+│   └── vanilla/                    # Vite + Three + SMNTC starter
 ├── src/cli/                         # CLI entry
 ├── .github/
 │   ├── workflows/ci.yml            # GitHub Actions CI
+│   ├── workflows/release.yml       # Publish + GitHub Release
+│   └── FUNDING.yml                 # GitHub Sponsors
 │   └── ISSUE_TEMPLATE/             # Bug & feature templates
 ├── SMNTC-SPEC.md                   # Technical specification
+├── SECURITY.md                      # Security policy
+├── CODE_OF_CONDUCT.md               # Community guidelines
 ├── llms.txt                        # LLM context (concise)
 ├── llms-full.txt                   # LLM context (complete)
 ├── smntc.schema.json               # JSON Schema for SMNTCConfig
+├── jsr.json                         # JSR registry config
+├── stackblitz.json                  # StackBlitz playground config
 ├── CHANGELOG.md                    # Release changelog
 ├── CONTRIBUTING.md                 # Contribution guide
 ├── LICENSE                         # MIT License

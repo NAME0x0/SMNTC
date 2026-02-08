@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMNTC — Web Component</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Manrope", sans-serif; background: #0a0b0f; color: #eef2ff; }
+    .wrap { display: grid; grid-template-columns: 1fr 320px; min-height: 100vh; }
+    smntc-surface { width: 100%; height: 100vh; display: block; }
+    .panel { padding: 32px; background: #11131b; border-left: 1px solid rgba(255,255,255,0.08); }
+    .panel h3 { font-size: 1.2rem; margin-bottom: 16px; }
+    .panel button {
+      width: 100%; margin-bottom: 10px; padding: 10px 12px; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06);
+      color: #eef2ff; cursor: pointer; transition: 0.2s ease;
+    }
+    .panel button:hover { border-color: #7aa8ff; color: #7aa8ff; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <smntc-surface
+      id="surface"
+      surface="topographic"
+      vibe="calm"
+      palette="arctic"
+      reactivity="magnetic"
+      fidelity="medium"
+      style="display:block"
+    ></smntc-surface>
+    <div class="panel">
+      <h3>Web Component Controls</h3>
+      <button data-surface="topographic">Topographic</button>
+      <button data-surface="fluid">Fluid</button>
+      <button data-surface="glitch">Glitch</button>
+      <button data-vibe="stable">Stable</button>
+      <button data-vibe="calm">Calm</button>
+      <button data-vibe="agitated">Agitated</button>
+      <button data-palette="monochrome">Monochrome</button>
+      <button data-palette="arctic">Arctic</button>
+      <button data-palette="neon">Neon</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import '../../dist/web/index.mjs';
+
+    const surface = document.getElementById('surface');
+    const buttons = document.querySelectorAll('button');
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const { surface: s, vibe, palette } = button.dataset;
+        if (s) surface.setAttribute('surface', s);
+        if (vibe) surface.setAttribute('vibe', vibe);
+        if (palette) surface.setAttribute('palette', palette);
+      });
+    });
+  </script>
+</body>
+</html>

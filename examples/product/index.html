@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMNTC — Product Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0b0c10; color: #f5f2ed; font-family: "Outfit", sans-serif; overflow: hidden; }
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .card {
+      position: relative; z-index: 2; margin: 12vh 8vw; padding: 32px 36px;
+      background: rgba(12, 14, 18, 0.7); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px; max-width: 460px; backdrop-filter: blur(14px);
+    }
+    h2 { font-size: 2rem; margin-bottom: 12px; }
+    p { color: rgba(245, 242, 237, 0.7); line-height: 1.6; margin-bottom: 20px; }
+    .swatches { display: flex; gap: 10px; }
+    .swatches button {
+      border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08);
+      color: #f5f2ed; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+      transition: 0.2s ease;
+    }
+    .swatches button.active { border-color: #f5f2ed; background: rgba(255,255,255,0.18); }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div class="card">
+    <h2>Flux Studio</h2>
+    <p>Switch palettes to preview how SMNTC adapts your brand mood instantly.</p>
+    <div class="swatches">
+      <button data-palette="monochrome" class="active">Mono</button>
+      <button data-palette="ember">Ember</button>
+      <button data-palette="arctic">Arctic</button>
+      <button data-palette="neon">Neon</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "smntc": "../../dist/index.mjs"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { SMNTCKernel } from 'smntc';
+
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 4.2);
+
+    const geometry = new THREE.PlaneGeometry(4, 4, 140, 140);
+    const mesh = new THREE.Mesh(geometry);
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add(mesh);
+
+    const kernel = new SMNTCKernel({
+      surface: 'fluid',
+      vibe: 'calm',
+      palette: 'monochrome',
+      reactivity: 'magnetic',
+      fidelity: 'medium',
+      wireframe: true,
+    });
+
+    kernel.apply(mesh, camera, renderer.domElement);
+    kernel.start(renderer, scene, camera);
+
+    function resize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    const buttons = document.querySelectorAll('button[data-palette]');
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        buttons.forEach((b) => b.classList.remove('active'));
+        button.classList.add('active');
+        kernel.setPalette(button.dataset.palette);
+      });
+    });
+  </script>
+</body>
+</html>

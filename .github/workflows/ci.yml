@@ -42,5 +42,8 @@ jobs:
           test -f dist/cli.js
           echo "All expected dist outputs present."
 
+      - name: Bundle size budget
+        run: npm run size
+
       - name: Test
         run: npm test

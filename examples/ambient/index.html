@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMNTC — Ambient Scene</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #05070d; color: #e9eefc; font-family: "DM Sans", sans-serif; overflow: hidden; }
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    .panel {
+      position: relative; z-index: 2; margin: 10vh 8vw; padding: 28px 32px;
+      background: rgba(7, 12, 22, 0.6); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px; max-width: 420px; backdrop-filter: blur(12px);
+    }
+    h2 { font-size: 1.8rem; margin-bottom: 10px; }
+    p { color: rgba(233, 238, 252, 0.65); font-size: 1rem; line-height: 1.6; }
+    .meta { margin-top: 18px; font-size: 0.85rem; color: rgba(233, 238, 252, 0.5); }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div class="panel">
+    <h2>Ambient Motion</h2>
+    <p>A slow, minimal surface designed for dashboards and data views.</p>
+    <div class="meta">Surface: topographic · Vibe: stable · Palette: phantom</div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "smntc": "../../dist/index.mjs"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { SMNTCKernel } from 'smntc';
+
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 4.5);
+
+    const geometry = new THREE.PlaneGeometry(4, 4, 140, 140);
+    const mesh = new THREE.Mesh(geometry);
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add(mesh);
+
+    const kernel = new SMNTCKernel({
+      surface: 'topographic',
+      vibe: 'stable',
+      palette: 'phantom',
+      reactivity: 'static',
+      fidelity: 'medium',
+      wireframe: false,
+      intensity: 0.7,
+    });
+
+    kernel.apply(mesh, camera, renderer.domElement);
+    kernel.start(renderer, scene, camera);
+
+    function resize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+  </script>
+</body>
+</html>

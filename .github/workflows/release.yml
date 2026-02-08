@@ -48,6 +48,9 @@ jobs:
           test -f dist/web/index.mjs
           test -f dist/cli.js
 
+      - name: Bundle size budget
+        run: npm run size
+
       - name: Publish to npm
         run: npm publish --provenance --access public
         env:

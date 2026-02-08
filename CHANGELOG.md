@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Security policy (`SECURITY.md`) and community code of conduct (`CODE_OF_CONDUCT.md`).
+- GitHub Sponsors configuration (`.github/FUNDING.yml`).
+- JSR registry config (`jsr.json`) and StackBlitz config (`stackblitz.json`).
+- Bundle size budget checks (size-limit) and build analysis script.
+- Additional no-build demos (`examples/hero`, `examples/ambient`, `examples/product`, `examples/web-component`).
+- Vanilla starter template (`templates/vanilla`) for quick adoption.
+
+### Changed
+- README badges and CDN usage snippets for faster discoverability and zero-build adoption.
+
 ## [1.1.0] - 2026-02-07
 
 ### Added

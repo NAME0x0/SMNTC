@@ -1,7 +1,7 @@
 # SMNTC — Full LLM Context
 
 > Semantic Engine for Motion, Animation, and Numerical Topographic Interactivity & Composition.
-> Version: 1.0.0 | License: MIT | Peer dependency: three >=0.150.0
+> Version: 1.1.0 | License: MIT | Peer dependency: three >=0.150.0
 
 This file contains the complete API surface of SMNTC for LLM context injection.
 Use this to generate correct SMNTC code without hallucinating invalid tokens or methods.
