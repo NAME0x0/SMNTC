@@ -57,6 +57,8 @@ export class SMNTCMaterial extends ShaderMaterial {
     reactivityStrength: Spring; reactivityRadius: Spring; wireframeWidth: Spring;
     primaryR: Spring; primaryG: Spring; primaryB: Spring;
     accentR: Spring; accentG: Spring; accentB: Spring;
+    angle: Spring; grain: Spring; glow: Spring;
+    chromatic: Spring; vignette: Spring; blur: Spring;
   };
 
   private mesh: Mesh | null = null;
@@ -79,6 +81,12 @@ export class SMNTCMaterial extends ShaderMaterial {
       speed:        options.speed        ?? DEFAULTS.speed,
       contourLines: options.contourLines ?? DEFAULTS.contourLines,
       thermalGuard: options.thermalGuard ?? DEFAULTS.thermalGuard,
+      angle:        options.angle        ?? DEFAULTS.angle,
+      grain:        options.grain        ?? DEFAULTS.grain,
+      glow:         options.glow         ?? DEFAULTS.glow,
+      chromatic:    options.chromatic    ?? DEFAULTS.chromatic,
+      vignette:     options.vignette     ?? DEFAULTS.vignette,
+      blur:         options.blur         ?? DEFAULTS.blur,
     };
 
     const constants = resolveConstants(config);
@@ -143,6 +151,12 @@ export class SMNTCMaterial extends ShaderMaterial {
       accentR:             this.springs.ensure('accentR', c.accentColor[0]),
       accentG:             this.springs.ensure('accentG', c.accentColor[1]),
       accentB:             this.springs.ensure('accentB', c.accentColor[2]),
+      angle:               this.springs.ensure('angle', c.angle),
+      grain:               this.springs.ensure('grain', c.grain),
+      glow:                this.springs.ensure('glow', c.glow),
+      chromatic:           this.springs.ensure('chromatic', c.chromatic),
+      vignette:            this.springs.ensure('vignette', c.vignette),
+      blur:                this.springs.ensure('blur', c.blur),
     };
   }
 
@@ -164,6 +178,12 @@ export class SMNTCMaterial extends ShaderMaterial {
     sp.accentR.setTarget(c.accentColor[0]);
     sp.accentG.setTarget(c.accentColor[1]);
     sp.accentB.setTarget(c.accentColor[2]);
+    sp.angle.setTarget(c.angle);
+    sp.grain.setTarget(c.grain);
+    sp.glow.setTarget(c.glow);
+    sp.chromatic.setTarget(c.chromatic);
+    sp.vignette.setTarget(c.vignette);
+    sp.blur.setTarget(c.blur);
   }
 
   private writeSpringValuesToUniforms(): void {
@@ -189,6 +209,13 @@ export class SMNTCMaterial extends ShaderMaterial {
       sp.accentG.value,
       sp.accentB.value,
     );
+
+    this.smntcUniforms.uAngle.value     = sp.angle.value * Math.PI / 180;
+    this.smntcUniforms.uGrain.value     = sp.grain.value;
+    this.smntcUniforms.uGlow.value      = sp.glow.value;
+    this.smntcUniforms.uChromatic.value = sp.chromatic.value;
+    this.smntcUniforms.uVignette.value  = sp.vignette.value;
+    this.smntcUniforms.uBlur.value      = sp.blur.value;
   }
 
   // =========================================================================
@@ -273,6 +300,42 @@ export class SMNTCMaterial extends ShaderMaterial {
 
   setSpeed(speed: number): this {
     this.config.speed = Math.max(0, Math.min(5, speed));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  setAngle(angle: number): this {
+    this.config.angle = Math.max(0, Math.min(360, angle));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  setGrain(grain: number): this {
+    this.config.grain = Math.max(0, Math.min(1, grain));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  setGlow(glow: number): this {
+    this.config.glow = Math.max(0, Math.min(2, glow));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  setChromatic(chromatic: number): this {
+    this.config.chromatic = Math.max(0, Math.min(1, chromatic));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  setVignette(vignette: number): this {
+    this.config.vignette = Math.max(0, Math.min(1, vignette));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  setBlur(blur: number): this {
+    this.config.blur = Math.max(0, Math.min(1, blur));
     this.pushSpringTargets(resolveConstants(this.config));
     return this;
   }

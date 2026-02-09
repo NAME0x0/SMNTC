@@ -29,6 +29,12 @@ export class SMNTCSurfaceElement extends HTMLElement {
       'speed',
       'contour-lines',
       'thermal-guard',
+      'angle',
+      'grain',
+      'glow',
+      'chromatic',
+      'vignette',
+      'blur',
       'geometry',
       'scale',
       'position',
@@ -185,6 +191,12 @@ export class SMNTCSurfaceElement extends HTMLElement {
       speed: this.getNumberAttr('speed', DEFAULTS.speed),
       contourLines: this.getNumberAttr('contour-lines', DEFAULTS.contourLines),
       thermalGuard: this.getBooleanAttr('thermal-guard', DEFAULTS.thermalGuard),
+      angle: this.getNumberAttr('angle', DEFAULTS.angle),
+      grain: this.getNumberAttr('grain', DEFAULTS.grain),
+      glow: this.getNumberAttr('glow', DEFAULTS.glow),
+      chromatic: this.getNumberAttr('chromatic', DEFAULTS.chromatic),
+      vignette: this.getNumberAttr('vignette', DEFAULTS.vignette),
+      blur: this.getNumberAttr('blur', DEFAULTS.blur),
     };
   }
 

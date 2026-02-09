@@ -86,6 +86,8 @@ export class SMNTCKernel {
     reactivityStrength: Spring; reactivityRadius: Spring; wireframeWidth: Spring;
     primaryR: Spring; primaryG: Spring; primaryB: Spring;
     accentR: Spring; accentG: Spring; accentB: Spring;
+    angle: Spring; grain: Spring; glow: Spring;
+    chromatic: Spring; vignette: Spring; blur: Spring;
   };
 
   // --- References ---
@@ -114,6 +116,12 @@ export class SMNTCKernel {
       speed:        options.speed        ?? DEFAULTS.speed,
       contourLines: options.contourLines ?? DEFAULTS.contourLines,
       thermalGuard: options.thermalGuard ?? DEFAULTS.thermalGuard,
+      angle:        options.angle        ?? DEFAULTS.angle,
+      grain:        options.grain        ?? DEFAULTS.grain,
+      glow:         options.glow         ?? DEFAULTS.glow,
+      chromatic:    options.chromatic    ?? DEFAULTS.chromatic,
+      vignette:     options.vignette     ?? DEFAULTS.vignette,
+      blur:         options.blur         ?? DEFAULTS.blur,
     };
 
     this.constants = resolveConstants(this.config);
@@ -196,6 +204,12 @@ export class SMNTCKernel {
       accentR:             this.springs.ensure('accentR', c.accentColor[0]),
       accentG:             this.springs.ensure('accentG', c.accentColor[1]),
       accentB:             this.springs.ensure('accentB', c.accentColor[2]),
+      angle:               this.springs.ensure('angle', c.angle * Math.PI / 180),
+      grain:               this.springs.ensure('grain', c.grain),
+      glow:                this.springs.ensure('glow', c.glow),
+      chromatic:           this.springs.ensure('chromatic', c.chromatic),
+      vignette:            this.springs.ensure('vignette', c.vignette),
+      blur:                this.springs.ensure('blur', c.blur),
     };
   }
 
@@ -217,6 +231,12 @@ export class SMNTCKernel {
     sp.accentR.setTarget(c.accentColor[0]);
     sp.accentG.setTarget(c.accentColor[1]);
     sp.accentB.setTarget(c.accentColor[2]);
+    sp.angle.setTarget(c.angle * Math.PI / 180);
+    sp.grain.setTarget(c.grain);
+    sp.glow.setTarget(c.glow);
+    sp.chromatic.setTarget(c.chromatic);
+    sp.vignette.setTarget(c.vignette);
+    sp.blur.setTarget(c.blur);
   }
 
   private writeSpringValuesToUniforms(): void {
@@ -242,6 +262,12 @@ export class SMNTCKernel {
       sp.accentG.value,
       sp.accentB.value,
     );
+    this.uniforms.uAngle.value     = sp.angle.value;
+    this.uniforms.uGrain.value     = sp.grain.value;
+    this.uniforms.uGlow.value      = sp.glow.value;
+    this.uniforms.uChromatic.value = sp.chromatic.value;
+    this.uniforms.uVignette.value  = sp.vignette.value;
+    this.uniforms.uBlur.value      = sp.blur.value;
   }
 
   // =========================================================================
@@ -339,6 +365,48 @@ export class SMNTCKernel {
   /** Set speed multiplier. Spring-interpolated. Range: [0, 5]. */
   setSpeed(speed: number): this {
     this.config.speed = Math.max(0, Math.min(5, speed));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  /** Set displacement angle in degrees. Spring-interpolated. Range: [0, 360]. */
+  setAngle(angle: number): this {
+    this.config.angle = ((angle % 360) + 360) % 360;
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  /** Set film grain intensity. Spring-interpolated. Range: [0, 1]. */
+  setGrain(grain: number): this {
+    this.config.grain = Math.max(0, Math.min(1, grain));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  /** Set glow/bloom intensity. Spring-interpolated. Range: [0, 2]. */
+  setGlow(glow: number): this {
+    this.config.glow = Math.max(0, Math.min(2, glow));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  /** Set chromatic aberration strength. Spring-interpolated. Range: [0, 1]. */
+  setChromatic(chromatic: number): this {
+    this.config.chromatic = Math.max(0, Math.min(1, chromatic));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  /** Set vignette intensity. Spring-interpolated. Range: [0, 1]. */
+  setVignette(vignette: number): this {
+    this.config.vignette = Math.max(0, Math.min(1, vignette));
+    this.pushSpringTargets(resolveConstants(this.config));
+    return this;
+  }
+
+  /** Set blur intensity. Spring-interpolated. Range: [0, 1]. */
+  setBlur(blur: number): this {
+    this.config.blur = Math.max(0, Math.min(1, blur));
     this.pushSpringTargets(resolveConstants(this.config));
     return this;
   }

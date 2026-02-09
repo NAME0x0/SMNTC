@@ -6,3 +6,8 @@ dist/
 .env.local
 coverage/
 .turbo/
+
+# Agent swarm communication files
+AGENT-LOG.md
+AGENT-ISSUES.md
+AGENT-COMMS.md

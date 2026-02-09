@@ -3,81 +3,1260 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SMNTC — Ambient Scene</title>
+  <title>Flux Analytics — Powered by SMNTC</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #05070d; color: #e9eefc; font-family: "DM Sans", sans-serif; overflow: hidden; }
-    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-    .panel {
-      position: relative; z-index: 2; margin: 10vh 8vw; padding: 28px 32px;
-      background: rgba(7, 12, 22, 0.6); border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 18px; max-width: 420px; backdrop-filter: blur(12px);
+    /* ====================================================================
+       RESET & BASE
+       ==================================================================== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      background: #070b14;
+      color: #e2e8f4;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-    h2 { font-size: 1.8rem; margin-bottom: 10px; }
-    p { color: rgba(233, 238, 252, 0.65); font-size: 1rem; line-height: 1.6; }
-    .meta { margin-top: 18px; font-size: 0.85rem; color: rgba(233, 238, 252, 0.5); }
+
+    /* ====================================================================
+       CANVAS — Full-screen shader background
+       ==================================================================== */
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+    }
+
+    /* ====================================================================
+       DASHBOARD OVERLAY
+       ==================================================================== */
+    .dashboard {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-rows: 56px 1fr auto;
+      grid-template-columns: 1fr 260px;
+      gap: 16px;
+      padding: 16px;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .dashboard > * { pointer-events: auto; }
+
+    /* ====================================================================
+       GLASSMORPHISM CARD BASE
+       ==================================================================== */
+    .glass {
+      background: rgba(15, 20, 35, 0.6);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  border-color 0.3s ease;
+    }
+    .glass:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    /* ====================================================================
+       HEADER BAR
+       ==================================================================== */
+    .header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+    }
+    .header:hover { transform: none; box-shadow: none; }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #fff;
+      white-space: nowrap;
+    }
+    .header-brand svg { flex-shrink: 0; }
+    .status-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.5);
+      margin-left: 4px;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 6px #34d399;
+      animation: livePulse 2s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 6px #34d399; }
+      50% { opacity: 0.6; box-shadow: 0 0 12px #34d399; }
+    }
+
+    .palette-dots {
+      display: flex;
+      gap: 6px;
+      margin-left: 16px;
+    }
+    .palette-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+    .palette-dot:hover { transform: scale(1.25); }
+    .palette-dot.active {
+      border-color: rgba(255,255,255,0.6);
+      box-shadow: 0 0 8px rgba(255,255,255,0.15);
+    }
+    .palette-dot::after {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      border: 1.5px solid transparent;
+      transition: border-color 0.2s;
+    }
+    .palette-dot.active::after {
+      border-color: rgba(255,255,255,0.12);
+    }
+
+    .header-spacer { flex: 1; }
+
+    .header-time {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.45);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* ====================================================================
+       MAIN CONTENT AREA
+       ==================================================================== */
+    .main {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow: hidden;
+    }
+
+    /* ── Stats Row ─────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      flex-shrink: 0;
+    }
+    .stat-card {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .stat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .stat-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .stat-change {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .stat-change.positive {
+      color: #34d399;
+      background: rgba(52, 211, 153, 0.1);
+    }
+    .stat-change.negative {
+      color: #f87171;
+      background: rgba(248, 113, 113, 0.1);
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .stat-sparkline {
+      margin-top: 4px;
+      height: 32px;
+      opacity: 0.5;
+    }
+    .stat-sparkline svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Activity Chart ────────────────────────────── */
+    .activity-card {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .activity-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 4px;
+    }
+    .activity-subtitle {
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 16px;
+    }
+    .activity-bars {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      min-height: 80px;
+    }
+    .activity-bar-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+    .activity-bar {
+      width: 100%;
+      border-radius: 4px 4px 2px 2px;
+      background: linear-gradient(to top, var(--accent), var(--accent-light));
+      opacity: 0.65;
+      transition: opacity 0.3s ease, height 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+      min-height: 3px;
+    }
+    .activity-bar:hover { opacity: 1; }
+    .activity-bar-label {
+      font-size: 9px;
+      color: rgba(255,255,255,0.25);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ====================================================================
+       SIDE PANEL
+       ==================================================================== */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow: hidden;
+    }
+
+    .side-card {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .side-card:hover { transform: none; box-shadow: none; }
+    .side-card-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.35);
+    }
+
+    /* Surface list */
+    .surface-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .surface-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.5);
+      text-transform: capitalize;
+    }
+    .surface-item:hover {
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.8);
+    }
+    .surface-item.active {
+      background: rgba(74, 111, 165, 0.12);
+      border-color: rgba(74, 111, 165, 0.25);
+      color: #fff;
+    }
+    .surface-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .surface-item.active .surface-icon {
+      background: rgba(74, 111, 165, 0.2);
+    }
+
+    /* Vibe selector */
+    .vibe-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .vibe-pill {
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid transparent;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      text-transform: capitalize;
+    }
+    .vibe-pill:hover {
+      color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.07);
+    }
+    .vibe-pill.active {
+      color: #fff;
+      background: rgba(74, 111, 165, 0.15);
+      border-color: rgba(74, 111, 165, 0.3);
+    }
+
+    /* ====================================================================
+       BOTTOM BAR
+       ==================================================================== */
+    .bottom {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      height: 44px;
+    }
+    .bottom:hover { transform: none; box-shadow: none; }
+    .powered {
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.2);
+      letter-spacing: 0.06em;
+    }
+    .powered span {
+      color: rgba(255,255,255,0.35);
+      font-weight: 600;
+    }
+    .bottom-spacer { flex: 1; }
+    .bottom-vibes {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* ====================================================================
+       CSS VARIABLES
+       ==================================================================== */
+    :root {
+      --accent: #4a6fa5;
+      --accent-light: #6b8fc5;
+    }
+
+    /* ====================================================================
+       ANIMATIONS
+       ==================================================================== */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in {
+      opacity: 0;
+      animation: fadeInUp 0.6s ease-out forwards;
+    }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+    .delay-5 { animation-delay: 0.5s; }
+
+    /* ====================================================================
+       RESPONSIVE
+       ==================================================================== */
+    @media (max-width: 900px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+        grid-template-rows: 56px 1fr auto;
+        overflow-y: auto;
+      }
+      .sidebar { display: none; }
+      .stats-row { grid-template-columns: 1fr 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .dashboard { padding: 10px; gap: 10px; }
+      .stats-row { grid-template-columns: 1fr; }
+      .stat-value { font-size: 22px; }
+      .palette-dots { display: none; }
+    }
   </style>
 </head>
 <body>
+  <!-- WebGL Canvas -->
   <canvas id="scene"></canvas>
-  <div class="panel">
-    <h2>Ambient Motion</h2>
-    <p>A slow, minimal surface designed for dashboards and data views.</p>
-    <div class="meta">Surface: topographic · Vibe: stable · Palette: phantom</div>
+
+  <!-- Dashboard Overlay -->
+  <div class="dashboard">
+
+    <!-- ── Header Bar ──────────────────────────────── -->
+    <div class="header glass animate-in">
+      <div class="header-brand">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="2" width="7" height="7" rx="2" fill="rgba(255,255,255,0.7)"/>
+          <rect x="11" y="2" width="7" height="7" rx="2" fill="rgba(255,255,255,0.3)"/>
+          <rect x="2" y="11" width="7" height="7" rx="2" fill="rgba(255,255,255,0.3)"/>
+          <rect x="11" y="11" width="7" height="7" rx="2" fill="rgba(255,255,255,0.15)"/>
+        </svg>
+        Flux Analytics
+        <span class="status-live">
+          <span class="status-dot"></span>
+          Live
+        </span>
+      </div>
+      <div class="palette-dots" id="paletteDots"></div>
+      <div class="header-spacer"></div>
+      <div class="header-time" id="clock"></div>
+    </div>
+
+    <!-- ── Main Content ────────────────────────────── -->
+    <div class="main">
+      <!-- Stats Row -->
+      <div class="stats-row">
+        <div class="stat-card glass animate-in delay-1">
+          <div class="stat-header">
+            <span class="stat-label">Revenue</span>
+            <span class="stat-change positive">+12.3%</span>
+          </div>
+          <div class="stat-value">$2.4M</div>
+          <div class="stat-sparkline">
+            <svg viewBox="0 0 120 32" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="sg1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <polyline fill="url(#sg1)" stroke="none"
+                points="0,32 0,28 8,24 16,26 24,20 32,22 40,16 48,18 56,12 64,14 72,8 80,10 88,6 96,8 104,4 112,6 120,2 120,32" />
+              <polyline fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                points="0,28 8,24 16,26 24,20 32,22 40,16 48,18 56,12 64,14 72,8 80,10 88,6 96,8 104,4 112,6 120,2" />
+            </svg>
+          </div>
+        </div>
+        <div class="stat-card glass animate-in delay-2">
+          <div class="stat-header">
+            <span class="stat-label">Users</span>
+            <span class="stat-change positive">+8.7%</span>
+          </div>
+          <div class="stat-value">148K</div>
+          <div class="stat-sparkline">
+            <svg viewBox="0 0 120 32" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="sg2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <polyline fill="url(#sg2)" stroke="none"
+                points="0,32 0,24 8,22 16,20 24,22 32,18 40,16 48,20 56,14 64,16 72,10 80,14 88,8 96,12 104,6 112,10 120,4 120,32" />
+              <polyline fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                points="0,24 8,22 16,20 24,22 32,18 40,16 48,20 56,14 64,16 72,10 80,14 88,8 96,12 104,6 112,10 120,4" />
+            </svg>
+          </div>
+        </div>
+        <div class="stat-card glass animate-in delay-3">
+          <div class="stat-header">
+            <span class="stat-label">Performance</span>
+            <span class="stat-change negative">-0.1%</span>
+          </div>
+          <div class="stat-value">99.2%</div>
+          <div class="stat-sparkline">
+            <svg viewBox="0 0 120 32" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="sg3" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <polyline fill="url(#sg3)" stroke="none"
+                points="0,32 0,6 8,4 16,5 24,3 32,4 40,6 48,3 56,5 64,4 72,6 80,5 88,4 96,6 104,5 112,7 120,6 120,32" />
+              <polyline fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                points="0,6 8,4 16,5 24,3 32,4 40,6 48,3 56,5 64,4 72,6 80,5 88,4 96,6 104,5 112,7 120,6" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Chart -->
+      <div class="activity-card glass animate-in delay-4">
+        <div class="activity-title">Activity Overview</div>
+        <div class="activity-subtitle">Requests per hour — last 24h</div>
+        <div class="activity-bars" id="activityBars"></div>
+      </div>
+    </div>
+
+    <!-- ── Sidebar ─────────────────────────────────── -->
+    <div class="sidebar">
+      <!-- Surface Modes -->
+      <div class="side-card glass animate-in delay-3">
+        <div class="side-card-title">Surface Modes</div>
+        <div class="surface-list" id="surfaceList"></div>
+      </div>
+
+      <!-- Vibe Selector -->
+      <div class="side-card glass animate-in delay-4">
+        <div class="side-card-title">Vibes</div>
+        <div class="vibe-pills" id="vibePills"></div>
+      </div>
+    </div>
+
+    <!-- ── Bottom Bar ──────────────────────────────── -->
+    <div class="bottom glass animate-in delay-5">
+      <div class="powered">Powered by <span>SMNTC</span></div>
+      <div class="bottom-spacer"></div>
+      <div class="bottom-vibes" id="bottomVibes"></div>
+    </div>
+
   </div>
 
+  <!-- ================================================================== -->
+  <!-- THREE.JS + INLINE SMNTC SHADER ENGINE                              -->
+  <!-- ================================================================== -->
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-      "smntc": "../../dist/index.mjs"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
     }
   }
   </script>
 
   <script type="module">
     import * as THREE from 'three';
-    import { SMNTCKernel } from 'smntc';
 
+    // ====================================================================
+    // PALETTE DEFINITIONS (normalized RGB, all 13)
+    // ====================================================================
+    const PALETTES = {
+      monochrome: { primary: [0.878,0.878,0.878], accent: [1,1,1],             bg: [0,0,0] },
+      ember:      { primary: [1,0.42,0.21],       accent: [1,0.67,0],           bg: [0.04,0.04,0.04] },
+      arctic:     { primary: [0.533,0.8,1],        accent: [1,1,1],             bg: [0.02,0.02,0.063] },
+      neon:       { primary: [0,1,0.533],          accent: [1,0,1],             bg: [0.04,0.04,0.04] },
+      phantom:    { primary: [0.627,0.627,0.69],   accent: [0.376,0.376,0.627], bg: [0.031,0.031,0.047] },
+      ocean:      { primary: [0,0.467,0.714],      accent: [0,0.706,0.847],     bg: [0.012,0.027,0.118] },
+      sunset:     { primary: [0.969,0.498,0],       accent: [0.839,0.157,0.157], bg: [0.051,0.008,0.031] },
+      matrix:     { primary: [0,1,0.255],          accent: [0,0.561,0.067],     bg: [0,0,0] },
+      vapor:      { primary: [1,0.443,0.808],      accent: [0.004,0.804,0.996], bg: [0.039,0,0.071] },
+      gold:       { primary: [1,0.843,0],          accent: [0.855,0.647,0.125], bg: [0.039,0.031,0] },
+      infrared:   { primary: [1,0,0.333],          accent: [1,0.4,0],           bg: [0.039,0,0.02] },
+      aurora:     { primary: [0.263,0.710,0.506],  accent: [0.447,0.537,0.855], bg: [0.008,0.031,0.063] },
+      midnight:   { primary: [0.753,0.753,0.784],  accent: [0.29,0.435,0.647],  bg: [0.039,0.055,0.102] },
+    };
+
+    // ====================================================================
+    // SURFACE DEFINITIONS (all 8)
+    // ====================================================================
+    const SURFACES = {
+      topographic: { mode: 0, noiseScale: 1.0, icon: '📐' },
+      crystalline: { mode: 1, noiseScale: 2.5, icon: '💎' },
+      fluid:       { mode: 2, noiseScale: 0.6, icon: '💧' },
+      glitch:      { mode: 3, noiseScale: 3.0, icon: '🔀' },
+      organic:     { mode: 4, noiseScale: 0.8, icon: '🌿' },
+      terrain:     { mode: 5, noiseScale: 1.5, icon: '⛰' },
+      plasma:      { mode: 6, noiseScale: 2.0, icon: '⚡' },
+      wave:        { mode: 7, noiseScale: 0.5, icon: '🌊' },
+    };
+
+    // ====================================================================
+    // VIBE DEFINITIONS (all 9)
+    // ====================================================================
+    const VIBES = {
+      stable:    { frequency: 0.1,  amplitude: 0.02, noiseSpeed: 0.05 },
+      calm:      { frequency: 0.5,  amplitude: 0.08, noiseSpeed: 0.15 },
+      agitated:  { frequency: 2.5,  amplitude: 0.20, noiseSpeed: 0.60 },
+      chaotic:   { frequency: 5.0,  amplitude: 0.40, noiseSpeed: 1.50 },
+      breathing: { frequency: 0.08, amplitude: 0.05, noiseSpeed: 0.03 },
+      pulse:     { frequency: 1.2,  amplitude: 0.15, noiseSpeed: 0.30 },
+      drift:     { frequency: 0.3,  amplitude: 0.06, noiseSpeed: 0.10 },
+      storm:     { frequency: 4.0,  amplitude: 0.35, noiseSpeed: 1.20 },
+      cinematic: { frequency: 0.2,  amplitude: 0.12, noiseSpeed: 0.08 },
+    };
+
+    // ====================================================================
+    // SPRING PHYSICS
+    // ====================================================================
+    class Spring {
+      constructor(value, stiffness = 80, damping = 12) {
+        this.value = value;
+        this.target = value;
+        this.velocity = 0;
+        this.stiffness = stiffness;
+        this.damping = damping;
+      }
+      set(target) { this.target = target; }
+      tick(dt) {
+        const safeDt = Math.min(dt, 0.064);
+        const dx = this.target - this.value;
+        const springForce = dx * this.stiffness;
+        const dampForce = -this.velocity * this.damping;
+        this.velocity += (springForce + dampForce) * safeDt;
+        this.value += this.velocity * safeDt;
+        if (Math.abs(this.velocity) < 0.0005 && Math.abs(dx) < 0.0005) {
+          this.value = this.target;
+          this.velocity = 0;
+        }
+        return this.value;
+      }
+    }
+
+    // ====================================================================
+    // STATE
+    // ====================================================================
+    let currentSurface = 'terrain';
+    let currentVibe = 'breathing';
+    let currentPalette = 'midnight';
+
+    const springs = {
+      frequency:   new Spring(VIBES.breathing.frequency),
+      amplitude:   new Spring(VIBES.breathing.amplitude),
+      noiseScale:  new Spring(SURFACES.terrain.noiseScale),
+      noiseSpeed:  new Spring(VIBES.breathing.noiseSpeed),
+      surfaceMode: new Spring(SURFACES.terrain.mode, 120, 14),
+      primaryR:    new Spring(PALETTES.midnight.primary[0]),
+      primaryG:    new Spring(PALETTES.midnight.primary[1]),
+      primaryB:    new Spring(PALETTES.midnight.primary[2]),
+      accentR:     new Spring(PALETTES.midnight.accent[0]),
+      accentG:     new Spring(PALETTES.midnight.accent[1]),
+      accentB:     new Spring(PALETTES.midnight.accent[2]),
+      bgR:         new Spring(PALETTES.midnight.bg[0]),
+      bgG:         new Spring(PALETTES.midnight.bg[1]),
+      bgB:         new Spring(PALETTES.midnight.bg[2]),
+      grain:       new Spring(0.02),
+      glow:        new Spring(0.3),
+      chromatic:   new Spring(0.08),
+      vignette:    new Spring(0.4),
+      blur:        new Spring(0),
+      intensity:   new Spring(0.5),
+      angle:       new Spring(0),
+    };
+
+    // ====================================================================
+    // VERTEX SHADER — All 8 Surfaces, angle rotation
+    // ====================================================================
+    const vertexShader = /* glsl */ `
+precision highp float;
+
+uniform float uTime;
+uniform float uSurfaceMode;
+uniform float uFrequency;
+uniform float uAmplitude;
+uniform float uNoiseScale;
+uniform float uNoiseSpeed;
+uniform float uIntensity;
+uniform float uSpeed;
+uniform float uAngle;
+
+varying vec3  vNormal;
+varying vec3  vPosition;
+varying float vDisplacement;
+varying vec2  vUv;
+
+// ── Simplex 3D Noise ──
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 permute(vec4 x){return mod289(((x*34.0)+10.0)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+
+float snoise(vec3 v){
+  const vec2 C=vec2(1.0/6.0,1.0/3.0);
+  const vec4 D=vec4(0.0,0.5,1.0,2.0);
+  vec3 i=floor(v+dot(v,C.yyy));
+  vec3 x0=v-i+dot(i,C.xxx);
+  vec3 g=step(x0.yzx,x0.xyz);
+  vec3 l=1.0-g;
+  vec3 i1=min(g.xyz,l.zxy);
+  vec3 i2=max(g.xyz,l.zxy);
+  vec3 x1=x0-i1+C.xxx;
+  vec3 x2=x0-i2+C.yyy;
+  vec3 x3=x0-D.yyy;
+  i=mod289(i);
+  vec4 p=permute(permute(permute(
+    i.z+vec4(0.0,i1.z,i2.z,1.0))
+    +i.y+vec4(0.0,i1.y,i2.y,1.0))
+    +i.x+vec4(0.0,i1.x,i2.x,1.0));
+  float n_=0.142857142857;
+  vec3 ns=n_*D.wyz-D.xzx;
+  vec4 j=p-49.0*floor(p*ns.z*ns.z);
+  vec4 x_=floor(j*ns.z);
+  vec4 y_=floor(j-7.0*x_);
+  vec4 xv=x_*ns.x+ns.yyyy;
+  vec4 yv=y_*ns.x+ns.yyyy;
+  vec4 h=1.0-abs(xv)-abs(yv);
+  vec4 b0=vec4(xv.xy,yv.xy);
+  vec4 b1=vec4(xv.zw,yv.zw);
+  vec4 s0=floor(b0)*2.0+1.0;
+  vec4 s1=floor(b1)*2.0+1.0;
+  vec4 sh=-step(h,vec4(0.0));
+  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;
+  vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+  vec3 p0=vec3(a0.xy,h.x);
+  vec3 p1=vec3(a0.zw,h.y);
+  vec3 p2=vec3(a1.xy,h.z);
+  vec3 p3=vec3(a1.zw,h.w);
+  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+  p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+  vec4 m=max(0.5-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);
+  m=m*m;
+  return 105.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+}
+
+// ── Voronoi ──
+float voronoi(vec3 p){
+  vec3 i_st=floor(p);vec3 f_st=fract(p);
+  float md=1.0;
+  for(int z=-1;z<=1;z++) for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+    vec3 nb=vec3(float(x),float(y),float(z));
+    vec3 pt=vec3(
+      fract(sin(dot(i_st+nb,vec3(12.9898,78.233,45.164)))*43758.5453),
+      fract(sin(dot(i_st+nb,vec3(93.989,67.345,12.456)))*28461.2534),
+      fract(sin(dot(i_st+nb,vec3(43.332,93.532,65.123)))*63728.1927));
+    md=min(md,length(nb+pt-f_st));
+  }
+  return md;
+}
+
+// ── 8 Surface Displacement Functions ──
+float topographicDisp(vec3 p,float t){
+  float w1=sin(p.x*uFrequency+t*0.8)*0.5;
+  float w2=sin(p.y*uFrequency*1.3+t*0.6)*0.3;
+  float w3=cos(p.x*uFrequency*0.7+p.y*uFrequency*0.9+t*1.1)*0.2;
+  return(w1+w2+w3)*uAmplitude*uIntensity;
+}
+float crystallineDisp(vec3 p,float t){
+  float v=voronoi(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  return floor(v*8.0)/8.0*uAmplitude*uIntensity;
+}
+float fluidDisp(vec3 p,float t){
+  float n1=snoise(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float n2=snoise(p*uNoiseScale*2.0+vec3(t*uNoiseSpeed*0.5));
+  return(n1*0.6+n2*0.4)*uAmplitude*uIntensity;
+}
+float glitchDisp(vec3 p,float t){
+  float base=snoise(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float q=floor(base*4.0+0.5)/4.0;
+  float burst=step(0.92,fract(sin(dot(p.xy+t,vec2(12.9898,78.233)))*43758.5453));
+  return(q+burst*0.3)*uAmplitude*uIntensity;
+}
+float organicDisp(vec3 p,float t){
+  float w1=snoise(p*uNoiseScale*0.5+vec3(t*uNoiseSpeed*0.3));
+  float w2=snoise(p*uNoiseScale*0.5+vec3(0.0,t*uNoiseSpeed*0.4,0.0));
+  vec3 wp=p+vec3(w1,w2,0.0)*0.5;
+  float n=snoise(wp*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float n2=snoise(wp*uNoiseScale*1.5+vec3(t*uNoiseSpeed*0.7));
+  return(n*0.7+n2*0.3)*uAmplitude*uIntensity;
+}
+float terrainDisp(vec3 p,float t){
+  float total=0.0,amp=1.0,freq=1.0,weight=1.0;
+  for(int i=0;i<5;i++){
+    float n=abs(snoise(p*uNoiseScale*freq+vec3(0.0,0.0,t*uNoiseSpeed*0.2)));
+    n=1.0-n;n=n*n;n*=weight;
+    weight=clamp(n*2.0,0.0,1.0);
+    total+=n*amp;freq*=2.1;amp*=0.5;
+  }
+  return total*uAmplitude*uIntensity*0.5;
+}
+float plasmaDisp(vec3 p,float t){
+  float n1=sin(p.x*uNoiseScale*1.5+t*uNoiseSpeed*2.0);
+  float n2=sin(p.y*uNoiseScale*1.5+t*uNoiseSpeed*1.5);
+  float n3=snoise(p*uNoiseScale+vec3(t*uNoiseSpeed));
+  float n4=sin((p.x+p.y)*uNoiseScale+t*uNoiseSpeed*3.0)*0.5;
+  return(n1+n2+n3+n4)*0.25*uAmplitude*uIntensity;
+}
+float waveDisp(vec3 p,float t){
+  float w=0.0;
+  w+=sin(p.x*uFrequency*2.0+t*1.5)*0.4;
+  w+=sin(p.x*uFrequency*0.8-p.y*uFrequency*0.5+t*1.2)*0.3;
+  w+=sin(p.y*uFrequency*1.5+t*0.9)*0.2;
+  w+=sin((p.x+p.y)*uFrequency*0.6+t*2.0)*0.1;
+  w+=snoise(p*uNoiseScale*0.5+vec3(0.0,0.0,t*uNoiseSpeed*0.5))*0.15;
+  return w*uAmplitude*uIntensity;
+}
+
+float getDisplacement(vec3 pos,float t){
+  float ca=cos(uAngle),sa=sin(uAngle);
+  vec3 rp=vec3(pos.x*ca-pos.y*sa,pos.x*sa+pos.y*ca,pos.z);
+  if(uSurfaceMode<0.5) return topographicDisp(rp,t);
+  if(uSurfaceMode<1.5) return crystallineDisp(rp,t);
+  if(uSurfaceMode<2.5) return fluidDisp(rp,t);
+  if(uSurfaceMode<3.5) return glitchDisp(rp,t);
+  if(uSurfaceMode<4.5) return organicDisp(rp,t);
+  if(uSurfaceMode<5.5) return terrainDisp(rp,t);
+  if(uSurfaceMode<6.5) return plasmaDisp(rp,t);
+  return waveDisp(rp,t);
+}
+
+vec3 computeNormal(vec3 pos,vec3 norm,float t){
+  float eps=0.01;
+  float dX=getDisplacement(pos+vec3(eps,0,0),t)-getDisplacement(pos-vec3(eps,0,0),t);
+  float dZ=getDisplacement(pos+vec3(0,0,eps),t)-getDisplacement(pos-vec3(0,0,eps),t);
+  return normalize(norm+vec3(-dX/(2.0*eps),1.0,-dZ/(2.0*eps)));
+}
+
+void main(){
+  float t=mod(uTime*uSpeed,6283.1853);
+  vec3 pos=position;
+  float disp=getDisplacement(pos,t);
+  vec3 displaced=pos+normal*disp;
+  vNormal=normalize(normalMatrix*computeNormal(pos,normal,t));
+  vPosition=(modelViewMatrix*vec4(displaced,1.0)).xyz;
+  vDisplacement=disp;
+  vUv=uv;
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(displaced,1.0);
+}
+`;
+
+    // ====================================================================
+    // FRAGMENT SHADER — Full VFX (grain, glow, chromatic, vignette, blur)
+    // ====================================================================
+    const fragmentShader = /* glsl */ `
+precision highp float;
+
+uniform vec3  uPrimaryColor;
+uniform vec3  uAccentColor;
+uniform vec3  uBackgroundColor;
+uniform float uSurfaceMode;
+uniform float uWireframe;
+uniform float uWireframeWidth;
+uniform float uContourLines;
+uniform float uIntensity;
+uniform float uTime;
+uniform float uGrain;
+uniform float uGlow;
+uniform float uChromatic;
+uniform float uVignette;
+uniform float uBlur;
+
+varying vec3  vNormal;
+varying vec3  vPosition;
+varying float vDisplacement;
+varying vec2  vUv;
+
+float edgeFactor(){
+  vec2 grid=abs(fract(vUv*uContourLines-0.5)-0.5);
+  vec2 dG=fwidth(vUv*uContourLines);
+  vec2 a2=smoothstep(vec2(0.0),dG*uWireframeWidth*1.5,grid);
+  return min(a2.x,a2.y);
+}
+
+float contourFactor(){
+  float sd=vDisplacement*uContourLines*10.0;
+  float line=abs(fract(sd)-0.5);
+  return smoothstep(0.0,fwidth(sd)*1.5,line);
+}
+
+vec3 lighting(vec3 base){
+  vec3 ld=normalize(vec3(0.5,1.0,0.8));
+  vec3 vd=normalize(-vPosition);
+  vec3 n=normalize(vNormal);
+  float ambient=0.15;
+  float diff=max(dot(n,ld),0.0);
+  vec3 halfDir=normalize(ld+vd);
+  float spec=pow(max(dot(n,halfDir),0.0),64.0)*0.3;
+  float rim=pow(1.0-max(dot(vd,n),0.0),3.0)*0.2;
+  vec3 fillDir=normalize(vec3(-0.3,0.5,-0.6));
+  float fill=max(dot(n,fillDir),0.0)*0.15;
+  return base*(ambient+diff*0.7+fill)+vec3(spec+rim);
+}
+
+float filmGrain(vec2 uv,float t){
+  float n1=fract(sin(dot(uv*1000.0+t*100.0,vec2(12.9898,78.233)))*43758.5453);
+  float n2=fract(sin(dot(uv*800.0-t*50.0,vec2(63.7264,10.873)))*28462.6453);
+  return(n1*0.5+n2*0.5)*2.0-1.0;
+}
+
+float vignetteEffect(vec2 uv){
+  vec2 c=uv-0.5;
+  return 1.0-smoothstep(0.3,0.85,length(c));
+}
+
+void main(){
+  float blend=smoothstep(-0.15,0.15,vDisplacement)*uIntensity;
+  vec3 base=mix(uPrimaryColor,uAccentColor,blend);
+  vec4 fc;
+
+  if(uWireframe>0.5){
+    float c=contourFactor();
+    float e=edgeFactor();
+    float lf=min(c,e);
+    vec3 lc=lighting(base);
+    if(uGlow>0.01){
+      float gf=(1.0-lf)*uGlow;
+      lc+=base*gf*0.5+uAccentColor*gf*0.3;
+    }
+    float alpha=1.0-lf;
+    if(alpha<0.05) discard;
+    fc=vec4(lc,alpha);
+  } else {
+    vec3 lc=lighting(base);
+    if(uGlow>0.01){
+      float br=dot(lc,vec3(0.299,0.587,0.114));
+      lc+=lc*br*uGlow*0.4;
+    }
+    fc=vec4(lc,1.0);
+  }
+
+  if(uChromatic>0.001){
+    vec2 center=vUv-0.5;
+    float dist=length(center);
+    float ao=dist*uChromatic*0.02;
+    float rS=smoothstep(-0.15,0.15,vDisplacement+ao)*uIntensity;
+    float bS=smoothstep(-0.15,0.15,vDisplacement-ao)*uIntensity;
+    vec3 rC=mix(uPrimaryColor,uAccentColor,rS);
+    vec3 bC=mix(uPrimaryColor,uAccentColor,bS);
+    fc.r=mix(fc.r,rC.r*1.1,uChromatic*0.5);
+    fc.b=mix(fc.b,bC.b*1.1,uChromatic*0.5);
+  }
+
+  if(uGrain>0.001){
+    fc.rgb+=filmGrain(vUv,uTime)*uGrain*0.15;
+  }
+
+  if(uVignette>0.001){
+    fc.rgb*=mix(1.0,vignetteEffect(vUv),uVignette);
+  }
+
+  if(uBlur>0.001){
+    float depth=length(vPosition);
+    float bf=smoothstep(1.0,5.0,depth)*uBlur;
+    vec3 blurred=mix(fc.rgb,vec3(dot(fc.rgb,vec3(0.299,0.587,0.114))),bf*0.3);
+    fc.rgb=mix(fc.rgb,blurred,bf);
+  }
+
+  gl_FragColor=fc;
+}
+`;
+
+    // ====================================================================
+    // RENDERER SETUP
+    // ====================================================================
     const canvas = document.getElementById('scene');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(new THREE.Color(
+      PALETTES.midnight.bg[0], PALETTES.midnight.bg[1], PALETTES.midnight.bg[2]
+    ), 1);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 0, 4.5);
+    const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 100);
+    camera.position.set(0, 2.2, 4.0);
+    camera.lookAt(0, 0, 0);
 
-    const geometry = new THREE.PlaneGeometry(4, 4, 140, 140);
-    const mesh = new THREE.Mesh(geometry);
+    // High-density plane for detailed displacement
+    const geometry = new THREE.PlaneGeometry(6, 6, 180, 180);
+
+    const uniforms = {
+      uTime:          { value: 0 },
+      uSurfaceMode:   { value: SURFACES.terrain.mode },
+      uFrequency:     { value: VIBES.breathing.frequency },
+      uAmplitude:     { value: VIBES.breathing.amplitude },
+      uNoiseScale:    { value: SURFACES.terrain.noiseScale },
+      uNoiseSpeed:    { value: VIBES.breathing.noiseSpeed },
+      uIntensity:     { value: 0.5 },
+      uSpeed:         { value: 1.0 },
+      uContourLines:  { value: 16 },
+      uAngle:         { value: 0 },
+      uPrimaryColor:  { value: new THREE.Vector3(...PALETTES.midnight.primary) },
+      uAccentColor:   { value: new THREE.Vector3(...PALETTES.midnight.accent) },
+      uBackgroundColor:{ value: new THREE.Vector3(...PALETTES.midnight.bg) },
+      uWireframe:     { value: 0.0 },   // solid mode (wireframe: false)
+      uWireframeWidth:{ value: 1.0 },
+      uGrain:         { value: 0.02 },
+      uGlow:          { value: 0.3 },
+      uChromatic:     { value: 0.08 },
+      uVignette:      { value: 0.4 },
+      uBlur:          { value: 0.0 },
+    };
+
+    const material = new THREE.ShaderMaterial({
+      vertexShader,
+      fragmentShader,
+      uniforms,
+      transparent: false,
+      side: THREE.DoubleSide,
+      depthWrite: true,
+      extensions: { derivatives: true },
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
     mesh.rotation.x = -Math.PI / 2;
     scene.add(mesh);
 
-    const kernel = new SMNTCKernel({
-      surface: 'topographic',
-      vibe: 'stable',
-      palette: 'phantom',
-      reactivity: 'static',
-      fidelity: 'medium',
-      wireframe: false,
-      intensity: 0.7,
-    });
-
-    kernel.apply(mesh, camera, renderer.domElement);
-    kernel.start(renderer, scene, camera);
-
+    // ====================================================================
+    // RESIZE
+    // ====================================================================
     function resize() {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      renderer.setSize(width, height, false);
-      camera.aspect = width / height;
+      const w = innerWidth, h = innerHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
     }
-
     window.addEventListener('resize', resize);
     resize();
+
+    // ====================================================================
+    // ANIMATION LOOP — slow ambient, no mouse reactivity
+    // ====================================================================
+    const clock = new THREE.Clock();
+    const clearColor = new THREE.Color();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const elapsed = clock.getElapsedTime();
+
+      for (const s of Object.values(springs)) s.tick(dt);
+
+      uniforms.uTime.value         = elapsed;
+      uniforms.uSurfaceMode.value  = springs.surfaceMode.value;
+      uniforms.uFrequency.value    = springs.frequency.value;
+      uniforms.uAmplitude.value    = springs.amplitude.value;
+      uniforms.uNoiseScale.value   = springs.noiseScale.value;
+      uniforms.uNoiseSpeed.value   = springs.noiseSpeed.value;
+      uniforms.uIntensity.value    = springs.intensity.value;
+      uniforms.uAngle.value        = springs.angle.value;
+      uniforms.uGrain.value        = springs.grain.value;
+      uniforms.uGlow.value         = springs.glow.value;
+      uniforms.uChromatic.value    = springs.chromatic.value;
+      uniforms.uVignette.value     = springs.vignette.value;
+      uniforms.uBlur.value         = springs.blur.value;
+
+      uniforms.uPrimaryColor.value.set(
+        springs.primaryR.value, springs.primaryG.value, springs.primaryB.value
+      );
+      uniforms.uAccentColor.value.set(
+        springs.accentR.value, springs.accentG.value, springs.accentB.value
+      );
+      uniforms.uBackgroundColor.value.set(
+        springs.bgR.value, springs.bgG.value, springs.bgB.value
+      );
+
+      clearColor.setRGB(springs.bgR.value, springs.bgG.value, springs.bgB.value);
+      renderer.setClearColor(clearColor, 1);
+
+      renderer.render(scene, camera);
+    }
+
+    clock.start();
+    animate();
+
+    // ====================================================================
+    // APPLY STATE FUNCTIONS
+    // ====================================================================
+    function applySurface(name) {
+      currentSurface = name;
+      const s = SURFACES[name];
+      if (!s) return;
+      springs.surfaceMode.set(s.mode);
+      springs.noiseScale.set(s.noiseScale);
+      updateSurfaceUI();
+    }
+
+    function applyVibe(name) {
+      currentVibe = name;
+      const v = VIBES[name];
+      if (!v) return;
+      springs.frequency.set(v.frequency);
+      springs.amplitude.set(v.amplitude);
+      springs.noiseSpeed.set(v.noiseSpeed);
+      updateVibeUI();
+    }
+
+    function applyPalette(name) {
+      currentPalette = name;
+      const p = PALETTES[name];
+      if (!p) return;
+      springs.primaryR.set(p.primary[0]);
+      springs.primaryG.set(p.primary[1]);
+      springs.primaryB.set(p.primary[2]);
+      springs.accentR.set(p.accent[0]);
+      springs.accentG.set(p.accent[1]);
+      springs.accentB.set(p.accent[2]);
+      springs.bgR.set(p.bg[0]);
+      springs.bgG.set(p.bg[1]);
+      springs.bgB.set(p.bg[2]);
+      updatePaletteUI();
+      updateCSSAccent(p);
+    }
+
+    function updateCSSAccent(p) {
+      const toHex = v => Math.round(Math.min(1, v) * 255).toString(16).padStart(2, '0');
+      const accent = `#${toHex(p.accent[0])}${toHex(p.accent[1])}${toHex(p.accent[2])}`;
+      const accentLight = `#${toHex(Math.min(1, p.accent[0]*1.3))}${toHex(Math.min(1, p.accent[1]*1.3))}${toHex(Math.min(1, p.accent[2]*1.3))}`;
+      document.documentElement.style.setProperty('--accent', accent);
+      document.documentElement.style.setProperty('--accent-light', accentLight);
+    }
+
+    // ====================================================================
+    // BUILD DASHBOARD UI
+    // ====================================================================
+
+    // ── Palette dots (header quick-switch) ──
+    const headerPalettes = ['midnight', 'phantom', 'ocean', 'aurora'];
+    const paletteDotColors = {
+      midnight: '#4a6fa5',
+      phantom:  '#6060a0',
+      ocean:    '#0077b6',
+      aurora:   '#43b581',
+    };
+    const dotsContainer = document.getElementById('paletteDots');
+    headerPalettes.forEach(name => {
+      const dot = document.createElement('div');
+      dot.className = 'palette-dot' + (name === currentPalette ? ' active' : '');
+      dot.style.background = paletteDotColors[name];
+      dot.title = name;
+      dot.addEventListener('click', () => applyPalette(name));
+      dotsContainer.appendChild(dot);
+    });
+
+    function updatePaletteUI() {
+      dotsContainer.querySelectorAll('.palette-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', headerPalettes[i] === currentPalette);
+      });
+    }
+
+    // ── Surface list (sidebar) ──
+    const surfaceList = document.getElementById('surfaceList');
+    const sidebarSurfaces = ['terrain', 'organic', 'fluid', 'wave'];
+    sidebarSurfaces.forEach(name => {
+      const s = SURFACES[name];
+      const item = document.createElement('div');
+      item.className = 'surface-item' + (name === currentSurface ? ' active' : '');
+      item.innerHTML = `<div class="surface-icon">${s.icon}</div><span>${name}</span>`;
+      item.addEventListener('click', () => applySurface(name));
+      surfaceList.appendChild(item);
+    });
+
+    function updateSurfaceUI() {
+      surfaceList.querySelectorAll('.surface-item').forEach((item, i) => {
+        item.classList.toggle('active', sidebarSurfaces[i] === currentSurface);
+      });
+    }
+
+    // ── Vibe pills (sidebar — all 9) ──
+    const vibePills = document.getElementById('vibePills');
+    const vibeNames = Object.keys(VIBES);
+    vibeNames.forEach(name => {
+      const pill = document.createElement('button');
+      pill.className = 'vibe-pill' + (name === currentVibe ? ' active' : '');
+      pill.textContent = name;
+      pill.addEventListener('click', () => applyVibe(name));
+      vibePills.appendChild(pill);
+    });
+
+    function updateVibeUI() {
+      vibePills.querySelectorAll('.vibe-pill').forEach((pill, i) => {
+        pill.classList.toggle('active', vibeNames[i] === currentVibe);
+      });
+      bottomVibes.querySelectorAll('.vibe-pill').forEach((pill, i) => {
+        pill.classList.toggle('active', bottomVibeNames[i] === currentVibe);
+      });
+    }
+
+    // ── Bottom bar vibe shortcut pills ──
+    const bottomVibes = document.getElementById('bottomVibes');
+    const bottomVibeNames = ['breathing', 'stable', 'drift', 'cinematic'];
+    bottomVibeNames.forEach(name => {
+      const pill = document.createElement('button');
+      pill.className = 'vibe-pill' + (name === currentVibe ? ' active' : '');
+      pill.textContent = name;
+      pill.addEventListener('click', () => applyVibe(name));
+      bottomVibes.appendChild(pill);
+    });
+
+    // ── Activity bars (CSS bars, no chart library) ──
+    const barsContainer = document.getElementById('activityBars');
+    const barData = [38,52,44,68,72,56,48,82,90,76,64,88,94,70,58,80,86,62,74,92,66,78,84,60];
+    const hours = ['00','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23'];
+    barData.forEach((val, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'activity-bar-wrap';
+      const bar = document.createElement('div');
+      bar.className = 'activity-bar';
+      bar.style.height = '0%';
+      setTimeout(() => { bar.style.height = val + '%'; }, 400 + i * 40);
+      const label = document.createElement('div');
+      label.className = 'activity-bar-label';
+      label.textContent = hours[i];
+      wrap.appendChild(bar);
+      wrap.appendChild(label);
+      barsContainer.appendChild(wrap);
+    });
+
+    // ── Clock ──
+    const clockEl = document.getElementById('clock');
+    function updateClock() {
+      const now = new Date();
+      const opts = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+      clockEl.textContent = now.toLocaleDateString('en-US', opts);
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // ── Initial CSS accent from midnight palette ──
+    updateCSSAccent(PALETTES.midnight);
+
+    // ── Thermal guard: pause rendering when tab hidden ──
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) clock.stop(); else clock.start();
+    });
   </script>
 </body>
 </html>

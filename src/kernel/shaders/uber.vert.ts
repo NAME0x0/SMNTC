@@ -27,6 +27,7 @@ uniform float uReactivityStrength;
 uniform float uReactivityRadius;
 uniform vec3  uPointer;           // Normalized pointer position in world space
 uniform float uShockTime;         // Time since last shockwave trigger
+uniform float uAngle;             // Displacement rotation angle in radians
 
 // ---- Varyings ----
 varying vec3  vNormal;
@@ -160,12 +161,77 @@ float glitchDisplacement(vec3 pos, float t) {
   return (quantized + burst * 0.3) * uAmplitude * uIntensity;
 }
 
+// --- Organic: domain-warped simplex (biological membrane) ---
+float organicDisplacement(vec3 pos, float t) {
+  // Domain warping: offset input by noise of itself
+  float warp1 = snoise(pos * uNoiseScale * 0.5 + vec3(t * uNoiseSpeed * 0.3));
+  float warp2 = snoise(pos * uNoiseScale * 0.5 + vec3(0.0, t * uNoiseSpeed * 0.4, 0.0));
+  vec3 warped = pos + vec3(warp1, warp2, 0.0) * 0.5;
+  float n = snoise(warped * uNoiseScale + vec3(0.0, 0.0, t * uNoiseSpeed));
+  float n2 = snoise(warped * uNoiseScale * 1.5 + vec3(t * uNoiseSpeed * 0.7));
+  return (n * 0.7 + n2 * 0.3) * uAmplitude * uIntensity;
+}
+
+// --- Terrain: ridged multi-fractal (mountainous landscape) ---
+float terrainDisplacement(vec3 pos, float t) {
+  float total = 0.0;
+  float amp = 1.0;
+  float freq = 1.0;
+  float weight = 1.0;
+  for (int i = 0; i < 5; i++) {
+    float n = abs(snoise(pos * uNoiseScale * freq + vec3(0.0, 0.0, t * uNoiseSpeed * 0.2)));
+    n = 1.0 - n; // Ridge
+    n = n * n;    // Sharpen
+    n *= weight;
+    weight = clamp(n * 2.0, 0.0, 1.0);
+    total += n * amp;
+    freq *= 2.1;
+    amp *= 0.5;
+  }
+  return total * uAmplitude * uIntensity * 0.5;
+}
+
+// --- Plasma: animated FBM with swirling energy ---
+float plasmaDisplacement(vec3 pos, float t) {
+  float n1 = sin(pos.x * uNoiseScale * 1.5 + t * uNoiseSpeed * 2.0);
+  float n2 = sin(pos.y * uNoiseScale * 1.5 + t * uNoiseSpeed * 1.5);
+  float n3 = snoise(pos * uNoiseScale + vec3(t * uNoiseSpeed));
+  float n4 = sin((pos.x + pos.y) * uNoiseScale + t * uNoiseSpeed * 3.0) * 0.5;
+  return (n1 + n2 + n3 + n4) * 0.25 * uAmplitude * uIntensity;
+}
+
+// --- Wave: Gerstner wave approximation (ocean waves) ---
+float waveDisplacement(vec3 pos, float t) {
+  float wave = 0.0;
+  // Multi-directional waves
+  wave += sin(pos.x * uFrequency * 2.0 + t * 1.5) * 0.4;
+  wave += sin(pos.x * uFrequency * 0.8 - pos.y * uFrequency * 0.5 + t * 1.2) * 0.3;
+  wave += sin(pos.y * uFrequency * 1.5 + t * 0.9) * 0.2;
+  wave += sin((pos.x + pos.y) * uFrequency * 0.6 + t * 2.0) * 0.1;
+  // Add subtle noise for realism
+  wave += snoise(pos * uNoiseScale * 0.5 + vec3(0.0, 0.0, t * uNoiseSpeed * 0.5)) * 0.15;
+  return wave * uAmplitude * uIntensity;
+}
+
 float getDisplacement(vec3 pos, float t) {
+  // Apply angle rotation to displacement sampling position
+  float ca = cos(uAngle);
+  float sa = sin(uAngle);
+  vec3 rotPos = vec3(
+    pos.x * ca - pos.y * sa,
+    pos.x * sa + pos.y * ca,
+    pos.z
+  );
+
   // Branch by surface mode
-  if (uSurfaceMode < 0.5) return topographicDisplacement(pos, t);
-  if (uSurfaceMode < 1.5) return crystallineDisplacement(pos, t);
-  if (uSurfaceMode < 2.5) return fluidDisplacement(pos, t);
-  return glitchDisplacement(pos, t);
+  if (uSurfaceMode < 0.5) return topographicDisplacement(rotPos, t);
+  if (uSurfaceMode < 1.5) return crystallineDisplacement(rotPos, t);
+  if (uSurfaceMode < 2.5) return fluidDisplacement(rotPos, t);
+  if (uSurfaceMode < 3.5) return glitchDisplacement(rotPos, t);
+  if (uSurfaceMode < 4.5) return organicDisplacement(rotPos, t);
+  if (uSurfaceMode < 5.5) return terrainDisplacement(rotPos, t);
+  if (uSurfaceMode < 6.5) return plasmaDisplacement(rotPos, t);
+  return waveDisplacement(rotPos, t);
 }
 
 // ============================================================================

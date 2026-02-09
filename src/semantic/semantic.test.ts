@@ -17,11 +17,11 @@ import type { SMNTCConfig, ShaderConstants } from '../index';
 
 describe('Token Enumerations', () => {
   it('SURFACES contains exactly the expected values', () => {
-    expect(SURFACES).toEqual(['topographic', 'crystalline', 'fluid', 'glitch']);
+    expect(SURFACES).toEqual(['topographic', 'crystalline', 'fluid', 'glitch', 'organic', 'terrain', 'plasma', 'wave']);
   });
 
   it('VIBES contains exactly the expected values', () => {
-    expect(VIBES).toEqual(['stable', 'calm', 'agitated', 'chaotic']);
+    expect(VIBES).toEqual(['stable', 'calm', 'agitated', 'chaotic', 'breathing', 'pulse', 'drift', 'storm', 'cinematic']);
   });
 
   it('REACTIVITIES contains exactly the expected values', () => {
@@ -33,7 +33,7 @@ describe('Token Enumerations', () => {
   });
 
   it('PALETTES contains exactly the expected values', () => {
-    expect(PALETTES).toEqual(['monochrome', 'ember', 'arctic', 'neon', 'phantom']);
+    expect(PALETTES).toEqual(['monochrome', 'ember', 'arctic', 'neon', 'phantom', 'ocean', 'sunset', 'matrix', 'vapor', 'gold', 'infrared', 'aurora', 'midnight']);
   });
 
   it('all enumerations are frozen (readonly)', () => {
@@ -68,6 +68,12 @@ describe('DEFAULTS', () => {
     expect(DEFAULTS.speed).toBe(1.0);
     expect(DEFAULTS.contourLines).toBe(16);
     expect(DEFAULTS.thermalGuard).toBe(true);
+    expect(DEFAULTS.angle).toBe(0);
+    expect(DEFAULTS.grain).toBe(0);
+    expect(DEFAULTS.glow).toBe(0);
+    expect(DEFAULTS.chromatic).toBe(0);
+    expect(DEFAULTS.vignette).toBe(0);
+    expect(DEFAULTS.blur).toBe(0);
   });
 });
 
@@ -99,6 +105,10 @@ describe('resolveConstants', () => {
       ['crystalline', 1, 2.5],
       ['fluid', 2, 0.6],
       ['glitch', 3, 3.0],
+      ['organic', 4, 0.8],
+      ['terrain', 5, 1.5],
+      ['plasma', 6, 2.0],
+      ['wave', 7, 0.5],
     ] as const)('%s → mode %d, noiseScale %f', (surface, expectedMode, expectedNoise) => {
       const c = resolveConstants({ surface });
       expect(c.surfaceMode).toBe(expectedMode);
@@ -116,6 +126,11 @@ describe('resolveConstants', () => {
       ['calm', 0.5, 0.08, 0.80],
       ['agitated', 2.5, 0.20, 0.40],
       ['chaotic', 5.0, 0.40, 0.05],
+      ['breathing', 0.08, 0.05, 0.98],
+      ['pulse', 1.2, 0.15, 0.60],
+      ['drift', 0.3, 0.06, 0.85],
+      ['storm', 4.0, 0.35, 0.10],
+      ['cinematic', 0.2, 0.12, 0.90],
     ] as const)('%s → freq %f, amp %f, damp %f', (vibe, freq, amp, damp) => {
       const c = resolveConstants({ vibe });
       expect(c.frequency).toBeCloseTo(freq);
@@ -217,6 +232,42 @@ describe('resolveConstants', () => {
       expect(resolveConstants({ contourLines: 1 }).contourLines).toBe(4);
       expect(resolveConstants({ contourLines: 999 }).contourLines).toBe(64);
       expect(resolveConstants({ contourLines: 32 }).contourLines).toBe(32);
+    });
+
+    it('clamps angle to [0, 360]', () => {
+      expect(resolveConstants({ angle: -10 }).angle).toBe(0);
+      expect(resolveConstants({ angle: 500 }).angle).toBe(360);
+      expect(resolveConstants({ angle: 180 }).angle).toBe(180);
+    });
+
+    it('clamps grain to [0, 1]', () => {
+      expect(resolveConstants({ grain: -0.5 }).grain).toBe(0);
+      expect(resolveConstants({ grain: 3 }).grain).toBe(1);
+      expect(resolveConstants({ grain: 0.5 }).grain).toBe(0.5);
+    });
+
+    it('clamps glow to [0, 2]', () => {
+      expect(resolveConstants({ glow: -1 }).glow).toBe(0);
+      expect(resolveConstants({ glow: 5 }).glow).toBe(2);
+      expect(resolveConstants({ glow: 1.0 }).glow).toBe(1.0);
+    });
+
+    it('clamps chromatic to [0, 1]', () => {
+      expect(resolveConstants({ chromatic: -0.1 }).chromatic).toBe(0);
+      expect(resolveConstants({ chromatic: 2 }).chromatic).toBe(1);
+      expect(resolveConstants({ chromatic: 0.3 }).chromatic).toBe(0.3);
+    });
+
+    it('clamps vignette to [0, 1]', () => {
+      expect(resolveConstants({ vignette: -1 }).vignette).toBe(0);
+      expect(resolveConstants({ vignette: 5 }).vignette).toBe(1);
+      expect(resolveConstants({ vignette: 0.7 }).vignette).toBe(0.7);
+    });
+
+    it('clamps blur to [0, 1]', () => {
+      expect(resolveConstants({ blur: -1 }).blur).toBe(0);
+      expect(resolveConstants({ blur: 10 }).blur).toBe(1);
+      expect(resolveConstants({ blur: 0.4 }).blur).toBe(0.4);
     });
   });
 

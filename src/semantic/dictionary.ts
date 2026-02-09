@@ -35,6 +35,12 @@ export const DEFAULTS = {
   speed: 1.0,
   contourLines: 16,
   thermalGuard: true,
+  angle: 0,
+  grain: 0,
+  glow: 0,
+  chromatic: 0,
+  vignette: 0,
+  blur: 0,
 };
 
 export function resolveConstants(config: {
@@ -47,6 +53,12 @@ export function resolveConstants(config: {
   intensity?: number;
   speed?: number;
   contourLines?: number;
+  angle?: number;
+  grain?: number;
+  glow?: number;
+  chromatic?: number;
+  vignette?: number;
+  blur?: number;
 }): ShaderConstants {
   const surface =    config.surface    ?? DEFAULTS.surface;
   const vibe =       config.vibe       ?? DEFAULTS.vibe;
@@ -87,6 +99,12 @@ export function resolveConstants(config: {
     intensity:          clamp(config.intensity  ?? DEFAULTS.intensity, 0, 2),
     speed:              clamp(config.speed      ?? DEFAULTS.speed, 0, 5),
     contourLines:       clamp(config.contourLines ?? DEFAULTS.contourLines, 4, 64),
+    angle:              clamp(config.angle      ?? DEFAULTS.angle, 0, 360),
+    grain:              clamp(config.grain      ?? DEFAULTS.grain, 0, 1),
+    glow:               clamp(config.glow       ?? DEFAULTS.glow, 0, 2),
+    chromatic:          clamp(config.chromatic  ?? DEFAULTS.chromatic, 0, 1),
+    vignette:           clamp(config.vignette   ?? DEFAULTS.vignette, 0, 1),
+    blur:               clamp(config.blur       ?? DEFAULTS.blur, 0, 1),
   };
 }
 

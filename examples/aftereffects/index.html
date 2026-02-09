@@ -1,0 +1,1602 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMNTC — Motion Graphics Compositor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ====================================================================
+       RESET & BASE
+       ==================================================================== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      background: #0d0d1a;
+      color: #c8cde0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ====================================================================
+       LAYOUT
+       ==================================================================== */
+    #viewport {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+      background: #0a0a14;
+    }
+    #scene {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Comp info overlay */
+    .comp-info {
+      position: absolute;
+      top: 10px;
+      left: 14px;
+      z-index: 5;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: rgba(200,205,224,0.35);
+      pointer-events: none;
+      display: flex;
+      gap: 16px;
+    }
+    .comp-info span { white-space: nowrap; }
+
+    /* ====================================================================
+       PRESETS BAR
+       ==================================================================== */
+    .presets-bar {
+      height: 34px;
+      background: #16162a;
+      border-top: 1px solid #222240;
+      border-bottom: 1px solid #1a1a30;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .presets-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(200,205,224,0.3);
+      margin-right: 6px;
+      white-space: nowrap;
+    }
+    .preset-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+      color: rgba(200,205,224,0.55);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .preset-btn:hover {
+      background: rgba(255,255,255,0.07);
+      color: rgba(200,205,224,0.85);
+      border-color: rgba(255,255,255,0.12);
+    }
+    .preset-btn.active {
+      background: rgba(90,120,220,0.15);
+      border-color: rgba(90,120,220,0.35);
+      color: #8ab4ff;
+    }
+
+    /* ====================================================================
+       TIMELINE PANEL
+       ==================================================================== */
+    .timeline-panel {
+      height: 30vh;
+      min-height: 200px;
+      max-height: 340px;
+      background: #1e1e2e;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    /* Layers area */
+    .layers-area {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* Layer list (left column) */
+    .layer-list {
+      width: 200px;
+      min-width: 200px;
+      border-right: 1px solid #2a2a44;
+      overflow-y: auto;
+      background: #1a1a2e;
+    }
+    .layer-list::-webkit-scrollbar { width: 4px; }
+    .layer-list::-webkit-scrollbar-track { background: transparent; }
+    .layer-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+    .layer-row {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 6px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      transition: background 0.15s ease;
+      user-select: none;
+    }
+    .layer-row:nth-child(even) { background: rgba(255,255,255,0.015); }
+    .layer-row:hover { background: rgba(90,120,220,0.08); }
+    .layer-row.active { background: rgba(90,120,220,0.14); }
+
+    .layer-eye {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+    .layer-eye:hover { opacity: 1; }
+    .layer-eye.hidden { opacity: 0.2; }
+
+    .layer-color {
+      width: 4px;
+      height: 16px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .layer-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(200,205,224,0.75);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+    .layer-row.active .layer-name { color: #c8d4ff; }
+
+    .layer-type {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      font-weight: 500;
+      padding: 1px 4px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.05);
+      color: rgba(200,205,224,0.35);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+
+    /* Options columns (right of layer list) */
+    .options-area {
+      flex: 1;
+      overflow-y: auto;
+      background: #282838;
+    }
+    .options-area::-webkit-scrollbar { width: 4px; }
+    .options-area::-webkit-scrollbar-track { background: transparent; }
+    .options-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+    .option-row {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .option-row:nth-child(even) { background: rgba(255,255,255,0.012); }
+
+    .option-row select {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #c8cde0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      cursor: pointer;
+      outline: none;
+      min-width: 110px;
+    }
+    .option-row select:focus { border-color: rgba(90,120,220,0.5); }
+    .option-row select option {
+      background: #282838;
+      color: #c8cde0;
+    }
+
+    /* FX slider row */
+    .fx-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+    .fx-slider {
+      flex: 1;
+      max-width: 200px;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    .fx-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #6888cc;
+      border: 2px solid #8ab4ff;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    .fx-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .fx-slider::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #6888cc;
+      border: 2px solid #8ab4ff;
+      cursor: pointer;
+    }
+
+    .fx-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: rgba(200,205,224,0.5);
+      min-width: 38px;
+      text-align: right;
+    }
+
+    /* Keyframe track area (decorative bars) */
+    .keyframe-track {
+      flex: 1;
+      position: relative;
+      min-width: 100px;
+    }
+    .kf-bar {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 6px;
+      border-radius: 3px;
+      opacity: 0.3;
+    }
+
+    /* ====================================================================
+       PLAYBACK BAR
+       ==================================================================== */
+    .playback-bar {
+      height: 36px;
+      background: #16162a;
+      border-top: 1px solid #2a2a44;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .play-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: #c8cde0;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .play-btn:hover {
+      background: rgba(90,120,220,0.15);
+      border-color: rgba(90,120,220,0.3);
+    }
+    .play-btn.active {
+      background: rgba(90,120,220,0.2);
+      border-color: rgba(90,120,220,0.4);
+      color: #8ab4ff;
+    }
+
+    .pb-divider {
+      width: 1px;
+      height: 18px;
+      background: rgba(255,255,255,0.06);
+    }
+
+    .speed-group {
+      display: flex;
+      gap: 3px;
+    }
+    .speed-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+      color: rgba(200,205,224,0.4);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .speed-btn:hover {
+      background: rgba(255,255,255,0.06);
+      color: rgba(200,205,224,0.7);
+    }
+    .speed-btn.active {
+      background: rgba(90,120,220,0.15);
+      border-color: rgba(90,120,220,0.3);
+      color: #8ab4ff;
+    }
+
+    .time-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgba(200,205,224,0.6);
+      min-width: 80px;
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+
+    .scrubber-container {
+      flex: 1;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      position: relative;
+      cursor: pointer;
+    }
+    .scrubber-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+    .scrubber-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #5a78dc, #8ab4ff);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+    .scrubber-head {
+      position: absolute;
+      top: 50%;
+      left: 0%;
+      transform: translate(-50%, -50%);
+      width: 10px;
+      height: 10px;
+      background: #8ab4ff;
+      border: 2px solid #c8d4ff;
+      border-radius: 50%;
+      transition: left 0.1s linear;
+      pointer-events: none;
+    }
+
+    .pb-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(200,205,224,0.25);
+      white-space: nowrap;
+    }
+
+    /* ====================================================================
+       SHORTCUTS HINT
+       ==================================================================== */
+    .shortcuts-hint {
+      position: absolute;
+      bottom: 8px;
+      right: 14px;
+      z-index: 5;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: rgba(200,205,224,0.2);
+      pointer-events: none;
+    }
+    .shortcuts-hint kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 3px;
+      font-size: 9px;
+      margin: 0 2px;
+    }
+  </style>
+</head>
+<body>
+  <!-- ================================================================== -->
+  <!-- VIEWPORT                                                           -->
+  <!-- ================================================================== -->
+  <div id="viewport">
+    <canvas id="scene"></canvas>
+    <div class="comp-info">
+      <span id="compRes">1920 × 1080</span>
+      <span>|</span>
+      <span id="compFps">60 fps</span>
+      <span>|</span>
+      <span>SMNTC Compositor v1.0</span>
+    </div>
+    <div class="shortcuts-hint">
+      <kbd>Space</kbd> Play/Pause &nbsp; <kbd>[</kbd><kbd>]</kbd> Speed
+    </div>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- PRESETS BAR                                                        -->
+  <!-- ================================================================== -->
+  <div class="presets-bar">
+    <span class="presets-label">Presets</span>
+    <button class="preset-btn active" data-preset="mograph">Motion Graphics</button>
+    <button class="preset-btn" data-preset="cinematic">Cinematic</button>
+    <button class="preset-btn" data-preset="cyberpunk">Cyberpunk</button>
+    <button class="preset-btn" data-preset="organic">Organic Flow</button>
+    <button class="preset-btn" data-preset="minimal">Clean Minimal</button>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- TIMELINE PANEL                                                     -->
+  <!-- ================================================================== -->
+  <div class="timeline-panel">
+    <div class="layers-area">
+      <!-- Layer List -->
+      <div class="layer-list" id="layerList">
+        <div class="layer-row active" data-layer="surface">
+          <span class="layer-eye" data-layer="surface" title="Toggle visibility">👁</span>
+          <span class="layer-color" style="background:#5a78dc"></span>
+          <span class="layer-name">Surface</span>
+          <span class="layer-type">Shape</span>
+        </div>
+        <div class="layer-row" data-layer="motion">
+          <span class="layer-eye" data-layer="motion" title="Toggle visibility">👁</span>
+          <span class="layer-color" style="background:#dc5a78"></span>
+          <span class="layer-name">Motion</span>
+          <span class="layer-type">Vibe</span>
+        </div>
+        <div class="layer-row" data-layer="color">
+          <span class="layer-eye" data-layer="color" title="Toggle visibility">👁</span>
+          <span class="layer-color" style="background:#78dc5a"></span>
+          <span class="layer-name">Color</span>
+          <span class="layer-type">Pal</span>
+        </div>
+        <div class="layer-row" data-layer="grain">
+          <span class="layer-eye" data-layer="grain" title="Toggle visibility">👁</span>
+          <span class="layer-color" style="background:#dcb85a"></span>
+          <span class="layer-name">FX: Grain</span>
+          <span class="layer-type">FX</span>
+        </div>
+        <div class="layer-row" data-layer="glow">
+          <span class="layer-eye" data-layer="glow" title="Toggle visibility">👁</span>
+          <span class="layer-color" style="background:#5adcb8"></span>
+          <span class="layer-name">FX: Glow</span>
+          <span class="layer-type">FX</span>
+        </div>
+        <div class="layer-row" data-layer="chromatic">
+          <span class="layer-eye" data-layer="chromatic" title="Toggle visibility">👁</span>
+          <span class="layer-color" style="background:#b85adc"></span>
+          <span class="layer-name">FX: Chromatic</span>
+          <span class="layer-type">FX</span>
+        </div>
+        <div class="layer-row" data-layer="vignette">
+          <span class="layer-eye" data-layer="vignette" title="Toggle visibility">👁</span>
+          <span class="layer-color" style="background:#dc5ab8"></span>
+          <span class="layer-name">FX: Vignette</span>
+          <span class="layer-type">FX</span>
+        </div>
+      </div>
+
+      <!-- Options Area -->
+      <div class="options-area" id="optionsArea">
+        <!-- Surface row -->
+        <div class="option-row" data-layer="surface">
+          <select id="surfaceSelect">
+            <option value="topographic">Topographic</option>
+            <option value="crystalline">Crystalline</option>
+            <option value="fluid">Fluid</option>
+            <option value="glitch">Glitch</option>
+            <option value="organic">Organic</option>
+            <option value="terrain">Terrain</option>
+            <option value="plasma" selected>Plasma</option>
+            <option value="wave">Wave</option>
+          </select>
+          <div class="keyframe-track">
+            <div class="kf-bar" style="left:0%;width:100%;background:#5a78dc"></div>
+          </div>
+        </div>
+        <!-- Motion row -->
+        <div class="option-row" data-layer="motion">
+          <select id="vibeSelect">
+            <option value="stable">Stable</option>
+            <option value="calm">Calm</option>
+            <option value="breathing">Breathing</option>
+            <option value="drift">Drift</option>
+            <option value="pulse" selected>Pulse</option>
+            <option value="cinematic">Cinematic</option>
+            <option value="agitated">Agitated</option>
+            <option value="storm">Storm</option>
+            <option value="chaotic">Chaotic</option>
+          </select>
+          <div class="keyframe-track">
+            <div class="kf-bar" style="left:5%;width:90%;background:#dc5a78"></div>
+          </div>
+        </div>
+        <!-- Color row -->
+        <div class="option-row" data-layer="color">
+          <select id="paletteSelect">
+            <option value="monochrome">Monochrome</option>
+            <option value="ember">Ember</option>
+            <option value="arctic">Arctic</option>
+            <option value="neon">Neon</option>
+            <option value="phantom">Phantom</option>
+            <option value="ocean">Ocean</option>
+            <option value="sunset">Sunset</option>
+            <option value="matrix">Matrix</option>
+            <option value="vapor" selected>Vapor</option>
+            <option value="gold">Gold</option>
+            <option value="infrared">Infrared</option>
+            <option value="aurora">Aurora</option>
+            <option value="midnight">Midnight</option>
+          </select>
+          <div class="keyframe-track">
+            <div class="kf-bar" style="left:0%;width:100%;background:#78dc5a"></div>
+          </div>
+        </div>
+        <!-- FX: Grain -->
+        <div class="option-row" data-layer="grain">
+          <div class="fx-control">
+            <input type="range" class="fx-slider" id="grainSlider" min="0" max="100" value="5" />
+            <span class="fx-value" id="grainValue">5%</span>
+          </div>
+          <div class="keyframe-track">
+            <div class="kf-bar" style="left:10%;width:80%;background:#dcb85a"></div>
+          </div>
+        </div>
+        <!-- FX: Glow -->
+        <div class="option-row" data-layer="glow">
+          <div class="fx-control">
+            <input type="range" class="fx-slider" id="glowSlider" min="0" max="100" value="80" />
+            <span class="fx-value" id="glowValue">80%</span>
+          </div>
+          <div class="keyframe-track">
+            <div class="kf-bar" style="left:0%;width:95%;background:#5adcb8"></div>
+          </div>
+        </div>
+        <!-- FX: Chromatic -->
+        <div class="option-row" data-layer="chromatic">
+          <div class="fx-control">
+            <input type="range" class="fx-slider" id="chromaticSlider" min="0" max="100" value="20" />
+            <span class="fx-value" id="chromaticValue">20%</span>
+          </div>
+          <div class="keyframe-track">
+            <div class="kf-bar" style="left:15%;width:70%;background:#b85adc"></div>
+          </div>
+        </div>
+        <!-- FX: Vignette -->
+        <div class="option-row" data-layer="vignette">
+          <div class="fx-control">
+            <input type="range" class="fx-slider" id="vignetteSlider" min="0" max="100" value="30" />
+            <span class="fx-value" id="vignetteValue">30%</span>
+          </div>
+          <div class="keyframe-track">
+            <div class="kf-bar" style="left:5%;width:90%;background:#dc5ab8"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Playback Bar -->
+    <div class="playback-bar">
+      <button class="play-btn active" id="playBtn" title="Play / Pause (Space)">▶</button>
+      <div class="pb-divider"></div>
+      <span class="pb-label">Speed</span>
+      <div class="speed-group">
+        <button class="speed-btn" data-speed="0.25">0.25×</button>
+        <button class="speed-btn" data-speed="0.5">0.5×</button>
+        <button class="speed-btn active" data-speed="1">1×</button>
+        <button class="speed-btn" data-speed="2">2×</button>
+        <button class="speed-btn" data-speed="4">4×</button>
+      </div>
+      <div class="pb-divider"></div>
+      <span class="time-display" id="timeDisplay">00:00:00</span>
+      <div class="pb-divider"></div>
+      <div class="scrubber-container" id="scrubberContainer">
+        <div class="scrubber-track">
+          <div class="scrubber-fill" id="scrubberFill"></div>
+        </div>
+        <div class="scrubber-head" id="scrubberHead"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- THREE.JS + INLINE SMNTC SHADER ENGINE                              -->
+  <!-- ================================================================== -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    // ====================================================================
+    // PALETTE DEFINITIONS (normalized RGB)
+    // ====================================================================
+    const PALETTES = {
+      monochrome: { primary: [0.878,0.878,0.878], accent: [1,1,1],             bg: [0,0,0] },
+      ember:      { primary: [1,0.42,0.21],       accent: [1,0.67,0],           bg: [0.04,0.04,0.04] },
+      arctic:     { primary: [0.533,0.8,1],        accent: [1,1,1],             bg: [0.02,0.02,0.063] },
+      neon:       { primary: [0,1,0.533],          accent: [1,0,1],             bg: [0.04,0.04,0.04] },
+      phantom:    { primary: [0.627,0.627,0.69],   accent: [0.376,0.376,0.627], bg: [0.031,0.031,0.047] },
+      ocean:      { primary: [0,0.467,0.714],      accent: [0,0.706,0.847],     bg: [0.012,0.027,0.118] },
+      sunset:     { primary: [0.969,0.498,0],       accent: [0.839,0.157,0.157], bg: [0.051,0.008,0.031] },
+      matrix:     { primary: [0,1,0.255],          accent: [0,0.561,0.067],     bg: [0,0,0] },
+      vapor:      { primary: [1,0.443,0.808],      accent: [0.004,0.804,0.996], bg: [0.039,0,0.071] },
+      gold:       { primary: [1,0.843,0],          accent: [0.855,0.647,0.125], bg: [0.039,0.031,0] },
+      infrared:   { primary: [1,0,0.333],          accent: [1,0.4,0],           bg: [0.039,0,0.02] },
+      aurora:     { primary: [0.263,0.710,0.506],  accent: [0.447,0.537,0.855], bg: [0.008,0.031,0.063] },
+      midnight:   { primary: [0.753,0.753,0.784],  accent: [0.29,0.435,0.647],  bg: [0.039,0.055,0.102] },
+    };
+
+    // ====================================================================
+    // SURFACE DEFINITIONS
+    // ====================================================================
+    const SURFACES = {
+      topographic: { mode: 0, noiseScale: 1.0 },
+      crystalline: { mode: 1, noiseScale: 2.5 },
+      fluid:       { mode: 2, noiseScale: 0.6 },
+      glitch:      { mode: 3, noiseScale: 3.0 },
+      organic:     { mode: 4, noiseScale: 0.8 },
+      terrain:     { mode: 5, noiseScale: 1.5 },
+      plasma:      { mode: 6, noiseScale: 2.0 },
+      wave:        { mode: 7, noiseScale: 0.5 },
+    };
+
+    // ====================================================================
+    // VIBE DEFINITIONS
+    // ====================================================================
+    const VIBES = {
+      stable:    { frequency: 0.1,  amplitude: 0.02, noiseSpeed: 0.05 },
+      calm:      { frequency: 0.5,  amplitude: 0.08, noiseSpeed: 0.15 },
+      breathing: { frequency: 0.08, amplitude: 0.05, noiseSpeed: 0.03 },
+      drift:     { frequency: 0.3,  amplitude: 0.06, noiseSpeed: 0.10 },
+      pulse:     { frequency: 1.2,  amplitude: 0.15, noiseSpeed: 0.30 },
+      cinematic: { frequency: 0.2,  amplitude: 0.12, noiseSpeed: 0.08 },
+      agitated:  { frequency: 2.5,  amplitude: 0.20, noiseSpeed: 0.60 },
+      storm:     { frequency: 4.0,  amplitude: 0.35, noiseSpeed: 1.20 },
+      chaotic:   { frequency: 5.0,  amplitude: 0.40, noiseSpeed: 1.50 },
+    };
+
+    // ====================================================================
+    // SPRING PHYSICS
+    // ====================================================================
+    class Spring {
+      constructor(value, stiffness = 80, damping = 12) {
+        this.value = value;
+        this.target = value;
+        this.velocity = 0;
+        this.stiffness = stiffness;
+        this.damping = damping;
+      }
+      set(target) { this.target = target; }
+      tick(dt) {
+        const dx = this.target - this.value;
+        const springForce = dx * this.stiffness;
+        const dampForce = -this.velocity * this.damping;
+        this.velocity += (springForce + dampForce) * dt;
+        this.value += this.velocity * dt;
+        return this.value;
+      }
+    }
+
+    // ====================================================================
+    // STATE
+    // ====================================================================
+    let currentSurface = 'plasma';
+    let currentVibe = 'pulse';
+    let currentPalette = 'vapor';
+    let isPlaying = true;
+    let playbackSpeed = 1.0;
+    let elapsedTime = 0;
+
+    // Layer visibility
+    const layerVisible = {
+      surface: true,
+      motion: true,
+      color: true,
+      grain: true,
+      glow: true,
+      chromatic: true,
+      vignette: true,
+    };
+
+    // FX target values (what the slider says)
+    const fxTargets = {
+      grain: 0.05,
+      glow: 0.8,
+      chromatic: 0.2,
+      vignette: 0.3,
+    };
+
+    // Springs for smooth transitions
+    const springs = {
+      frequency:   new Spring(VIBES.pulse.frequency),
+      amplitude:   new Spring(VIBES.pulse.amplitude),
+      noiseScale:  new Spring(SURFACES.plasma.noiseScale),
+      noiseSpeed:  new Spring(VIBES.pulse.noiseSpeed),
+      surfaceMode: new Spring(SURFACES.plasma.mode, 120, 14),
+      primaryR:    new Spring(PALETTES.vapor.primary[0]),
+      primaryG:    new Spring(PALETTES.vapor.primary[1]),
+      primaryB:    new Spring(PALETTES.vapor.primary[2]),
+      accentR:     new Spring(PALETTES.vapor.accent[0]),
+      accentG:     new Spring(PALETTES.vapor.accent[1]),
+      accentB:     new Spring(PALETTES.vapor.accent[2]),
+      bgR:         new Spring(PALETTES.vapor.bg[0]),
+      bgG:         new Spring(PALETTES.vapor.bg[1]),
+      bgB:         new Spring(PALETTES.vapor.bg[2]),
+      grain:       new Spring(0.05),
+      glow:        new Spring(0.8),
+      chromatic:   new Spring(0.2),
+      vignette:    new Spring(0.3),
+      blur:        new Spring(0),
+      speed:       new Spring(1.0),
+      intensity:   new Spring(1.0),
+      angle:       new Spring(0),
+      pointerX:    new Spring(0, 60, 10),
+      pointerY:    new Spring(0, 60, 10),
+    };
+
+    // ====================================================================
+    // VERTEX SHADER (all 8 surfaces, reactivity, angle rotation)
+    // ====================================================================
+    const vertexShader = /* glsl */ `
+precision highp float;
+
+uniform float uTime;
+uniform float uSurfaceMode;
+uniform float uFrequency;
+uniform float uAmplitude;
+uniform float uNoiseScale;
+uniform float uNoiseSpeed;
+uniform float uIntensity;
+uniform float uSpeed;
+uniform float uContourLines;
+uniform float uReactivityMode;
+uniform float uReactivityStrength;
+uniform float uReactivityRadius;
+uniform vec3  uPointer;
+uniform float uShockTime;
+uniform float uAngle;
+
+varying vec3  vNormal;
+varying vec3  vPosition;
+varying float vDisplacement;
+varying vec2  vUv;
+
+// ---- Simplex 3D Noise ----
+vec3 mod289(vec3 x) { return x - floor(x*(1.0/289.0))*289.0; }
+vec4 mod289(vec4 x) { return x - floor(x*(1.0/289.0))*289.0; }
+vec4 permute(vec4 x) { return mod289(((x*34.0)+10.0)*x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314*r; }
+
+float snoise(vec3 v) {
+  const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+  const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+  vec3 i = floor(v + dot(v, C.yyy));
+  vec3 x0 = v - i + dot(i, C.xxx);
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min(g.xyz, l.zxy);
+  vec3 i2 = max(g.xyz, l.zxy);
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy;
+  vec3 x3 = x0 - D.yyy;
+  i = mod289(i);
+  vec4 p = permute(permute(permute(
+    i.z + vec4(0.0, i1.z, i2.z, 1.0))
+  + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+  + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+  float n_ = 0.142857142857;
+  vec3 ns = n_ * D.wyz - D.xzx;
+  vec4 j = p - 49.0*floor(p*ns.z*ns.z);
+  vec4 x_ = floor(j*ns.z);
+  vec4 y_ = floor(j - 7.0*x_);
+  vec4 x = x_*ns.x + ns.yyyy;
+  vec4 y = y_*ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+  vec4 b0 = vec4(x.xy, y.xy);
+  vec4 b1 = vec4(x.zw, y.zw);
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+  vec3 p0 = vec3(a0.xy, h.x);
+  vec3 p1 = vec3(a0.zw, h.y);
+  vec3 p2 = vec3(a1.xy, h.z);
+  vec3 p3 = vec3(a1.zw, h.w);
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+  p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+  vec4 m = max(0.5 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m*m;
+  return 105.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+}
+
+// ---- Voronoi ----
+float voronoi(vec3 p) {
+  vec3 i_st = floor(p); vec3 f_st = fract(p);
+  float md = 1.0;
+  for (int z=-1; z<=1; z++) for (int y=-1; y<=1; y++) for (int x=-1; x<=1; x++) {
+    vec3 nb = vec3(float(x), float(y), float(z));
+    vec3 pt = vec3(
+      fract(sin(dot(i_st+nb, vec3(12.9898,78.233,45.164)))*43758.5453),
+      fract(sin(dot(i_st+nb, vec3(93.989,67.345,12.456)))*28461.2534),
+      fract(sin(dot(i_st+nb, vec3(43.332,93.532,65.123)))*63728.1927)
+    );
+    md = min(md, length(nb + pt - f_st));
+  }
+  return md;
+}
+
+// ---- 8 Surface Displacement Functions ----
+float topographicDisp(vec3 p, float t) {
+  float w1 = sin(p.x*uFrequency+t*0.8)*0.5;
+  float w2 = sin(p.y*uFrequency*1.3+t*0.6)*0.3;
+  float w3 = cos(p.x*uFrequency*0.7+p.y*uFrequency*0.9+t*1.1)*0.2;
+  return (w1+w2+w3)*uAmplitude*uIntensity;
+}
+float crystallineDisp(vec3 p, float t) {
+  float v = voronoi(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  return floor(v*8.0)/8.0*uAmplitude*uIntensity;
+}
+float fluidDisp(vec3 p, float t) {
+  float n1 = snoise(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float n2 = snoise(p*uNoiseScale*2.0+vec3(t*uNoiseSpeed*0.5));
+  return (n1*0.6+n2*0.4)*uAmplitude*uIntensity;
+}
+float glitchDisp(vec3 p, float t) {
+  float base = snoise(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float q = floor(base*4.0+0.5)/4.0;
+  float burst = step(0.92, fract(sin(dot(p.xy+t, vec2(12.9898,78.233)))*43758.5453));
+  return (q+burst*0.3)*uAmplitude*uIntensity;
+}
+float organicDisp(vec3 p, float t) {
+  float w1 = snoise(p*uNoiseScale*0.5+vec3(t*uNoiseSpeed*0.3));
+  float w2 = snoise(p*uNoiseScale*0.5+vec3(0.0,t*uNoiseSpeed*0.4,0.0));
+  vec3 wp = p+vec3(w1,w2,0.0)*0.5;
+  float n = snoise(wp*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float n2 = snoise(wp*uNoiseScale*1.5+vec3(t*uNoiseSpeed*0.7));
+  return (n*0.7+n2*0.3)*uAmplitude*uIntensity;
+}
+float terrainDisp(vec3 p, float t) {
+  float total=0.0, amp=1.0, freq=1.0, weight=1.0;
+  for (int i=0; i<5; i++) {
+    float n = abs(snoise(p*uNoiseScale*freq+vec3(0.0,0.0,t*uNoiseSpeed*0.2)));
+    n = 1.0-n; n *= n; n *= weight;
+    weight = clamp(n*2.0, 0.0, 1.0);
+    total += n*amp; freq *= 2.1; amp *= 0.5;
+  }
+  return total*uAmplitude*uIntensity*0.5;
+}
+float plasmaDisp(vec3 p, float t) {
+  float n1 = sin(p.x*uNoiseScale*1.5+t*uNoiseSpeed*2.0);
+  float n2 = sin(p.y*uNoiseScale*1.5+t*uNoiseSpeed*1.5);
+  float n3 = snoise(p*uNoiseScale+vec3(t*uNoiseSpeed));
+  float n4 = sin((p.x+p.y)*uNoiseScale+t*uNoiseSpeed*3.0)*0.5;
+  return (n1+n2+n3+n4)*0.25*uAmplitude*uIntensity;
+}
+float waveDisp(vec3 p, float t) {
+  float w = 0.0;
+  w += sin(p.x*uFrequency*2.0+t*1.5)*0.4;
+  w += sin(p.x*uFrequency*0.8-p.y*uFrequency*0.5+t*1.2)*0.3;
+  w += sin(p.y*uFrequency*1.5+t*0.9)*0.2;
+  w += sin((p.x+p.y)*uFrequency*0.6+t*2.0)*0.1;
+  w += snoise(p*uNoiseScale*0.5+vec3(0.0,0.0,t*uNoiseSpeed*0.5))*0.15;
+  return w*uAmplitude*uIntensity;
+}
+
+float getDisplacement(vec3 pos, float t) {
+  float ca = cos(uAngle), sa = sin(uAngle);
+  vec3 rp = vec3(pos.x*ca - pos.y*sa, pos.x*sa + pos.y*ca, pos.z);
+  if (uSurfaceMode < 0.5) return topographicDisp(rp, t);
+  if (uSurfaceMode < 1.5) return crystallineDisp(rp, t);
+  if (uSurfaceMode < 2.5) return fluidDisp(rp, t);
+  if (uSurfaceMode < 3.5) return glitchDisp(rp, t);
+  if (uSurfaceMode < 4.5) return organicDisp(rp, t);
+  if (uSurfaceMode < 5.5) return terrainDisp(rp, t);
+  if (uSurfaceMode < 6.5) return plasmaDisp(rp, t);
+  return waveDisp(rp, t);
+}
+
+// ---- Reactivity ----
+float reactivityOffset(vec3 wp) {
+  if (uReactivityMode < 0.5) return 0.0;
+  float dist = distance(wp, uPointer);
+  float influence = 1.0 - smoothstep(0.0, uReactivityRadius, dist);
+  if (uReactivityMode < 1.5) return  influence * uReactivityStrength * 0.3;
+  if (uReactivityMode < 2.5) return -influence * uReactivityStrength * 0.3;
+  float sr = uShockTime*3.0;
+  float sw = sin((dist-sr)*10.0)*exp(-uShockTime*2.0);
+  float si = smoothstep(sr+1.0,sr,dist)*smoothstep(sr-1.0,sr,dist);
+  return sw*si*uReactivityStrength*0.5;
+}
+
+// ---- Finite-Difference Normal ----
+vec3 computeNormal(vec3 pos, vec3 norm, float t) {
+  float eps = 0.01;
+  float dX = getDisplacement(pos+vec3(eps,0,0),t) - getDisplacement(pos-vec3(eps,0,0),t);
+  float dZ = getDisplacement(pos+vec3(0,0,eps),t) - getDisplacement(pos-vec3(0,0,eps),t);
+  return normalize(norm + vec3(-dX/(2.0*eps), 1.0, -dZ/(2.0*eps)));
+}
+
+void main() {
+  float t = mod(uTime * uSpeed, 6283.1853);
+  vec3 pos = position;
+  float disp = getDisplacement(pos, t) + reactivityOffset(pos);
+  vec3 displaced = pos + normal * disp;
+  vNormal = normalize(normalMatrix * computeNormal(pos, normal, t));
+  vPosition = (modelViewMatrix * vec4(displaced, 1.0)).xyz;
+  vDisplacement = disp;
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+}
+`;
+
+    // ====================================================================
+    // FRAGMENT SHADER (VFX: grain, glow, chromatic, vignette, blur)
+    // ====================================================================
+    const fragmentShader = /* glsl */ `
+precision highp float;
+
+uniform vec3  uPrimaryColor;
+uniform vec3  uAccentColor;
+uniform vec3  uBackgroundColor;
+uniform float uContourLines;
+uniform float uSurfaceMode;
+uniform float uWireframe;
+uniform float uWireframeWidth;
+uniform float uIntensity;
+uniform float uTime;
+uniform float uGrain;
+uniform float uGlow;
+uniform float uChromatic;
+uniform float uVignette;
+uniform float uBlur;
+
+varying vec3  vNormal;
+varying vec3  vPosition;
+varying float vDisplacement;
+varying vec2  vUv;
+
+// Wireframe edge
+float edgeFactor() {
+  vec2 grid = abs(fract(vUv*uContourLines - 0.5) - 0.5);
+  vec2 dG = fwidth(vUv*uContourLines);
+  vec2 a2 = smoothstep(vec2(0.0), dG*uWireframeWidth*1.5, grid);
+  return min(a2.x, a2.y);
+}
+
+// Displacement contour lines
+float contourFactor() {
+  float sd = vDisplacement*uContourLines*10.0;
+  float line = abs(fract(sd)-0.5);
+  return smoothstep(0.0, fwidth(sd)*1.5, line);
+}
+
+// Enhanced Phong lighting
+vec3 lighting(vec3 bc) {
+  vec3 ld = normalize(vec3(0.5,1.0,0.8));
+  vec3 vd = normalize(-vPosition);
+  vec3 n = normalize(vNormal);
+  float ambient = 0.15;
+  float diff = max(dot(n, ld), 0.0);
+  vec3 hd = normalize(ld+vd);
+  float spec = pow(max(dot(n,hd),0.0), 64.0)*0.3;
+  float rim = pow(1.0-max(dot(vd,n),0.0), 3.0)*0.2;
+  vec3 fd = normalize(vec3(-0.3,0.5,-0.6));
+  float fill = max(dot(n,fd),0.0)*0.15;
+  return bc*(ambient+diff*0.7+fill)+vec3(spec+rim);
+}
+
+// Film grain
+float filmGrain(vec2 uv, float t) {
+  float n1 = fract(sin(dot(uv*1000.0+t*100.0, vec2(12.9898,78.233)))*43758.5453);
+  float n2 = fract(sin(dot(uv*800.0-t*50.0, vec2(63.7264,10.873)))*28462.6453);
+  return (n1*0.5+n2*0.5)*2.0-1.0;
+}
+
+// Vignette
+float vignetteEffect(vec2 uv) {
+  vec2 c = uv-0.5;
+  return 1.0-smoothstep(0.3, 0.85, length(c));
+}
+
+void main() {
+  float bf = smoothstep(-0.15,0.15,vDisplacement)*uIntensity;
+  vec3 baseColor = mix(uPrimaryColor, uAccentColor, bf);
+  vec4 fc;
+
+  if (uWireframe > 0.5) {
+    float contour = contourFactor();
+    float edge = edgeFactor();
+    float lf = min(contour, edge);
+    vec3 lc = lighting(baseColor);
+    if (uGlow > 0.01) {
+      float gf = (1.0-lf)*uGlow;
+      lc += baseColor*gf*0.5 + uAccentColor*gf*0.3;
+    }
+    float alpha = 1.0-lf;
+    if (alpha < 0.05) discard;
+    fc = vec4(lc, alpha);
+  } else {
+    vec3 lc = lighting(baseColor);
+    if (uGlow > 0.01) {
+      float br = dot(lc, vec3(0.299,0.587,0.114));
+      lc += lc*br*uGlow*0.4;
+    }
+    fc = vec4(lc, 1.0);
+  }
+
+  // Chromatic aberration
+  if (uChromatic > 0.001) {
+    vec2 center = vUv - 0.5;
+    float dist = length(center);
+    float ao = dist * uChromatic * 0.02;
+    float rS = smoothstep(-0.15,0.15,vDisplacement+ao)*uIntensity;
+    float bS = smoothstep(-0.15,0.15,vDisplacement-ao)*uIntensity;
+    vec3 rC = mix(uPrimaryColor, uAccentColor, rS);
+    vec3 bC = mix(uPrimaryColor, uAccentColor, bS);
+    fc.r = mix(fc.r, rC.r*1.1, uChromatic*0.5);
+    fc.b = mix(fc.b, bC.b*1.1, uChromatic*0.5);
+  }
+
+  // Film grain overlay
+  if (uGrain > 0.001) {
+    fc.rgb += filmGrain(vUv, uTime)*uGrain*0.15;
+  }
+
+  // Vignette
+  if (uVignette > 0.001) {
+    fc.rgb *= mix(1.0, vignetteEffect(vUv), uVignette);
+  }
+
+  // Depth blur simulation
+  if (uBlur > 0.001) {
+    float depth = length(vPosition);
+    float blurF = smoothstep(1.0,5.0,depth)*uBlur;
+    vec3 blurred = mix(fc.rgb, vec3(dot(fc.rgb,vec3(0.299,0.587,0.114))), blurF*0.3);
+    fc.rgb = mix(fc.rgb, blurred, blurF);
+  }
+
+  gl_FragColor = fc;
+}
+`;
+
+    // ====================================================================
+    // RENDERER SETUP
+    // ====================================================================
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x0a0a14, 1);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    camera.position.set(0, 1.8, 4.5);
+    camera.lookAt(0, 0, 0);
+
+    // Large subdivided plane for the shader surface
+    const geometry = new THREE.PlaneGeometry(6, 6, 180, 180);
+
+    // Shader uniforms
+    const shaderUniforms = {
+      uTime:               { value: 0 },
+      uSurfaceMode:        { value: SURFACES.plasma.mode },
+      uFrequency:          { value: VIBES.pulse.frequency },
+      uAmplitude:          { value: VIBES.pulse.amplitude },
+      uNoiseScale:         { value: SURFACES.plasma.noiseScale },
+      uNoiseSpeed:         { value: VIBES.pulse.noiseSpeed },
+      uIntensity:          { value: 1.0 },
+      uSpeed:              { value: 1.0 },
+      uContourLines:       { value: 16 },
+      uReactivityMode:     { value: 1 },    // magnetic
+      uReactivityStrength: { value: 0.5 },
+      uReactivityRadius:   { value: 2.0 },
+      uPointer:            { value: new THREE.Vector3(0, 0, 0) },
+      uShockTime:          { value: 100 },
+      uAngle:              { value: 0 },
+      uPrimaryColor:       { value: new THREE.Vector3(...PALETTES.vapor.primary) },
+      uAccentColor:        { value: new THREE.Vector3(...PALETTES.vapor.accent) },
+      uBackgroundColor:    { value: new THREE.Vector3(...PALETTES.vapor.bg) },
+      uWireframe:          { value: 1.0 },
+      uWireframeWidth:     { value: 1.0 },
+      uGrain:              { value: 0.05 },
+      uGlow:               { value: 0.8 },
+      uChromatic:          { value: 0.2 },
+      uVignette:           { value: 0.3 },
+      uBlur:               { value: 0.0 },
+    };
+
+    const material = new THREE.ShaderMaterial({
+      vertexShader,
+      fragmentShader,
+      uniforms: shaderUniforms,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      extensions: { derivatives: true },
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add(mesh);
+
+    // ====================================================================
+    // RAYCASTER FOR MOUSE / TOUCH REACTIVITY
+    // ====================================================================
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2(0, 0);
+    let pointerActive = false;
+
+    function onPointerMove(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX ?? e.touches?.[0]?.clientX ?? 0) - rect.left;
+      const y = (e.clientY ?? e.touches?.[0]?.clientY ?? 0) - rect.top;
+      pointer.x =  (x / rect.width)  * 2 - 1;
+      pointer.y = -(y / rect.height) * 2 + 1;
+      pointerActive = true;
+      springs.pointerX.set(pointer.x * 2);
+      springs.pointerY.set(pointer.y * 2);
+    }
+
+    canvas.addEventListener('pointermove', onPointerMove, { passive: true });
+    canvas.addEventListener('touchmove', onPointerMove, { passive: true });
+
+    // ====================================================================
+    // RESIZE
+    // ====================================================================
+    function resize() {
+      const vp = document.getElementById('viewport');
+      const w = vp.clientWidth;
+      const h = vp.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      // Update comp info
+      document.getElementById('compRes').textContent = `${w} × ${h}`;
+    }
+    window.addEventListener('resize', resize);
+    // Initial resize deferred to after layout
+    requestAnimationFrame(resize);
+
+    // ====================================================================
+    // ANIMATION LOOP
+    // ====================================================================
+    const clock = new THREE.Clock();
+    const clearColor = new THREE.Color();
+    let lastFrameTime = 0;
+    let frameCount = 0;
+    let fpsDisplay = 60;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+
+      // FPS counter
+      frameCount++;
+      lastFrameTime += dt;
+      if (lastFrameTime >= 0.5) {
+        fpsDisplay = Math.round(frameCount / lastFrameTime);
+        document.getElementById('compFps').textContent = `${fpsDisplay} fps`;
+        frameCount = 0;
+        lastFrameTime = 0;
+      }
+
+      if (isPlaying) {
+        elapsedTime += dt * playbackSpeed;
+      }
+
+      // Tick all springs
+      for (const s of Object.values(springs)) s.tick(dt);
+
+      // Push spring values into uniforms
+      shaderUniforms.uTime.value         = elapsedTime;
+      shaderUniforms.uSurfaceMode.value  = springs.surfaceMode.value;
+      shaderUniforms.uFrequency.value    = springs.frequency.value;
+      shaderUniforms.uAmplitude.value    = springs.amplitude.value;
+      shaderUniforms.uNoiseScale.value   = springs.noiseScale.value;
+      shaderUniforms.uNoiseSpeed.value   = springs.noiseSpeed.value;
+      shaderUniforms.uSpeed.value        = springs.speed.value;
+      shaderUniforms.uIntensity.value    = springs.intensity.value;
+      shaderUniforms.uAngle.value        = springs.angle.value;
+      shaderUniforms.uGrain.value        = springs.grain.value;
+      shaderUniforms.uGlow.value         = springs.glow.value;
+      shaderUniforms.uChromatic.value    = springs.chromatic.value;
+      shaderUniforms.uVignette.value     = springs.vignette.value;
+      shaderUniforms.uBlur.value         = springs.blur.value;
+
+      // Palette colors
+      shaderUniforms.uPrimaryColor.value.set(
+        springs.primaryR.value, springs.primaryG.value, springs.primaryB.value
+      );
+      shaderUniforms.uAccentColor.value.set(
+        springs.accentR.value, springs.accentG.value, springs.accentB.value
+      );
+      shaderUniforms.uBackgroundColor.value.set(
+        springs.bgR.value, springs.bgG.value, springs.bgB.value
+      );
+
+      // Sync background clear with palette
+      clearColor.setRGB(springs.bgR.value, springs.bgG.value, springs.bgB.value);
+      renderer.setClearColor(clearColor, 1);
+
+      // Mouse reactivity raycast
+      if (pointerActive) {
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObject(mesh);
+        if (hits.length > 0) {
+          shaderUniforms.uPointer.value.copy(hits[0].point);
+        }
+      }
+
+      renderer.render(scene, camera);
+
+      // Update time display
+      updateTimeDisplay();
+      // Update scrubber
+      updateScrubber();
+    }
+
+    clock.start();
+    animate();
+
+    // ====================================================================
+    // TIME DISPLAY (mm:ss:ff)
+    // ====================================================================
+    function updateTimeDisplay() {
+      const total = elapsedTime;
+      const mins = Math.floor(total / 60);
+      const secs = Math.floor(total % 60);
+      const frames = Math.floor((total % 1) * 30); // 30fps timecode
+      const mm = String(mins).padStart(2, '0');
+      const ss = String(secs).padStart(2, '0');
+      const ff = String(frames).padStart(2, '0');
+      document.getElementById('timeDisplay').textContent = `${mm}:${ss}:${ff}`;
+    }
+
+    // ====================================================================
+    // SCRUBBER
+    // ====================================================================
+    const LOOP_DURATION = 120; // 2 minute visual loop
+    function updateScrubber() {
+      const pct = ((elapsedTime % LOOP_DURATION) / LOOP_DURATION) * 100;
+      document.getElementById('scrubberFill').style.width = pct + '%';
+      document.getElementById('scrubberHead').style.left = pct + '%';
+    }
+
+    // ====================================================================
+    // UI: STATE CHANGERS
+    // ====================================================================
+    function applySurface(name) {
+      currentSurface = name;
+      const s = SURFACES[name];
+      if (!s) return;
+      if (layerVisible.surface) {
+        springs.surfaceMode.set(s.mode);
+        springs.noiseScale.set(s.noiseScale);
+      }
+    }
+
+    function applyVibe(name) {
+      currentVibe = name;
+      const v = VIBES[name];
+      if (!v) return;
+      if (layerVisible.motion) {
+        springs.frequency.set(v.frequency);
+        springs.amplitude.set(v.amplitude);
+        springs.noiseSpeed.set(v.noiseSpeed);
+      }
+    }
+
+    function applyPalette(name) {
+      currentPalette = name;
+      const p = PALETTES[name];
+      if (!p) return;
+      if (layerVisible.color) {
+        springs.primaryR.set(p.primary[0]);
+        springs.primaryG.set(p.primary[1]);
+        springs.primaryB.set(p.primary[2]);
+        springs.accentR.set(p.accent[0]);
+        springs.accentG.set(p.accent[1]);
+        springs.accentB.set(p.accent[2]);
+        springs.bgR.set(p.bg[0]);
+        springs.bgG.set(p.bg[1]);
+        springs.bgB.set(p.bg[2]);
+      }
+    }
+
+    function applyFX() {
+      springs.grain.set(layerVisible.grain ? fxTargets.grain : 0);
+      springs.glow.set(layerVisible.glow ? fxTargets.glow : 0);
+      springs.chromatic.set(layerVisible.chromatic ? fxTargets.chromatic : 0);
+      springs.vignette.set(layerVisible.vignette ? fxTargets.vignette : 0);
+    }
+
+    // ====================================================================
+    // UI: LAYER LIST WIRING
+    // ====================================================================
+    // Layer row click → active highlight
+    document.querySelectorAll('.layer-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (e.target.classList.contains('layer-eye')) return; // skip eye clicks
+        document.querySelectorAll('.layer-row').forEach(r => r.classList.remove('active'));
+        row.classList.add('active');
+      });
+    });
+
+    // Eye icon toggle
+    document.querySelectorAll('.layer-eye').forEach(eye => {
+      eye.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const layer = eye.dataset.layer;
+        layerVisible[layer] = !layerVisible[layer];
+        eye.classList.toggle('hidden', !layerVisible[layer]);
+        eye.textContent = layerVisible[layer] ? '👁' : '–';
+
+        // Re-apply current state
+        if (layer === 'surface') applySurface(currentSurface);
+        if (layer === 'motion') applyVibe(currentVibe);
+        if (layer === 'color') applyPalette(currentPalette);
+        if (['grain','glow','chromatic','vignette'].includes(layer)) applyFX();
+
+        // When surface is hidden, flatten everything
+        if (!layerVisible.surface) {
+          springs.amplitude.set(0);
+        } else {
+          const v = VIBES[currentVibe];
+          springs.amplitude.set(v.amplitude);
+        }
+
+        // When motion is hidden, stop motion
+        if (!layerVisible.motion) {
+          springs.frequency.set(0);
+          springs.noiseSpeed.set(0);
+        } else {
+          applyVibe(currentVibe);
+        }
+
+        // When color is hidden, go monochrome
+        if (!layerVisible.color) {
+          springs.primaryR.set(0.5); springs.primaryG.set(0.5); springs.primaryB.set(0.5);
+          springs.accentR.set(0.8); springs.accentG.set(0.8); springs.accentB.set(0.8);
+          springs.bgR.set(0.02); springs.bgG.set(0.02); springs.bgB.set(0.02);
+        } else {
+          applyPalette(currentPalette);
+        }
+      });
+    });
+
+    // ====================================================================
+    // UI: DROPDOWNS
+    // ====================================================================
+    document.getElementById('surfaceSelect').addEventListener('change', (e) => {
+      applySurface(e.target.value);
+    });
+    document.getElementById('vibeSelect').addEventListener('change', (e) => {
+      applyVibe(e.target.value);
+    });
+    document.getElementById('paletteSelect').addEventListener('change', (e) => {
+      applyPalette(e.target.value);
+    });
+
+    // ====================================================================
+    // UI: FX SLIDERS
+    // ====================================================================
+    function wireSlider(id, key, valueId) {
+      const slider = document.getElementById(id);
+      const valueEl = document.getElementById(valueId);
+      slider.addEventListener('input', () => {
+        const pct = parseInt(slider.value, 10);
+        fxTargets[key] = pct / 100;
+        valueEl.textContent = pct + '%';
+        applyFX();
+      });
+    }
+    wireSlider('grainSlider', 'grain', 'grainValue');
+    wireSlider('glowSlider', 'glow', 'glowValue');
+    wireSlider('chromaticSlider', 'chromatic', 'chromaticValue');
+    wireSlider('vignetteSlider', 'vignette', 'vignetteValue');
+
+    // ====================================================================
+    // UI: PLAY / PAUSE
+    // ====================================================================
+    const playBtn = document.getElementById('playBtn');
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? '▶' : '⏸';
+      playBtn.classList.toggle('active', isPlaying);
+      if (isPlaying) clock.start(); else clock.stop();
+    }
+    playBtn.addEventListener('click', togglePlay);
+
+    // ====================================================================
+    // UI: SPEED BUTTONS
+    // ====================================================================
+    const speedBtns = document.querySelectorAll('.speed-btn');
+    speedBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        speedBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        playbackSpeed = parseFloat(btn.dataset.speed);
+      });
+    });
+
+    function changeSpeed(dir) {
+      const speeds = [0.25, 0.5, 1, 2, 4];
+      let idx = speeds.indexOf(playbackSpeed);
+      if (idx === -1) idx = 2;
+      idx = Math.max(0, Math.min(speeds.length - 1, idx + dir));
+      playbackSpeed = speeds[idx];
+      speedBtns.forEach(b => {
+        b.classList.toggle('active', parseFloat(b.dataset.speed) === playbackSpeed);
+      });
+    }
+
+    // ====================================================================
+    // UI: PRESETS
+    // ====================================================================
+    const PRESETS = {
+      mograph: {
+        surface: 'plasma', vibe: 'pulse', palette: 'vapor',
+        grain: 5, glow: 80, chromatic: 20, vignette: 30,
+      },
+      cinematic: {
+        surface: 'terrain', vibe: 'cinematic', palette: 'midnight',
+        grain: 3, glow: 30, chromatic: 5, vignette: 50,
+      },
+      cyberpunk: {
+        surface: 'glitch', vibe: 'storm', palette: 'neon',
+        grain: 40, glow: 60, chromatic: 60, vignette: 20,
+      },
+      organic: {
+        surface: 'organic', vibe: 'breathing', palette: 'aurora',
+        grain: 2, glow: 20, chromatic: 5, vignette: 15,
+      },
+      minimal: {
+        surface: 'topographic', vibe: 'calm', palette: 'monochrome',
+        grain: 0, glow: 0, chromatic: 0, vignette: 0,
+      },
+    };
+
+    function applyPreset(name) {
+      const p = PRESETS[name];
+      if (!p) return;
+
+      // Update dropdowns
+      document.getElementById('surfaceSelect').value = p.surface;
+      document.getElementById('vibeSelect').value = p.vibe;
+      document.getElementById('paletteSelect').value = p.palette;
+
+      // Update sliders
+      document.getElementById('grainSlider').value = p.grain;
+      document.getElementById('grainValue').textContent = p.grain + '%';
+      document.getElementById('glowSlider').value = p.glow;
+      document.getElementById('glowValue').textContent = p.glow + '%';
+      document.getElementById('chromaticSlider').value = p.chromatic;
+      document.getElementById('chromaticValue').textContent = p.chromatic + '%';
+      document.getElementById('vignetteSlider').value = p.vignette;
+      document.getElementById('vignetteValue').textContent = p.vignette + '%';
+
+      // Apply
+      fxTargets.grain = p.grain / 100;
+      fxTargets.glow = p.glow / 100;
+      fxTargets.chromatic = p.chromatic / 100;
+      fxTargets.vignette = p.vignette / 100;
+
+      applySurface(p.surface);
+      applyVibe(p.vibe);
+      applyPalette(p.palette);
+      applyFX();
+
+      // Re-enable all layers
+      Object.keys(layerVisible).forEach(k => {
+        layerVisible[k] = true;
+      });
+      document.querySelectorAll('.layer-eye').forEach(eye => {
+        eye.classList.remove('hidden');
+        eye.textContent = '👁';
+      });
+
+      // Highlight preset button
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector(`.preset-btn[data-preset="${name}"]`)?.classList.add('active');
+    }
+
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+    });
+
+    // ====================================================================
+    // KEYBOARD SHORTCUTS
+    // ====================================================================
+    document.addEventListener('keydown', (e) => {
+      // Don't capture if we're in a select or input
+      if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      }
+      if (e.key === '[') {
+        e.preventDefault();
+        changeSpeed(-1);
+      }
+      if (e.key === ']') {
+        e.preventDefault();
+        changeSpeed(1);
+      }
+    });
+
+    // ====================================================================
+    // THERMAL GUARD
+    // ====================================================================
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { clock.stop(); }
+      else if (isPlaying) { clock.start(); }
+    });
+
+    // ====================================================================
+    // INITIAL STATE — apply "Motion Graphics" preset
+    // ====================================================================
+    applyPreset('mograph');
+  </script>
+</body>
+</html>

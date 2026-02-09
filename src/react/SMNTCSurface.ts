@@ -86,6 +86,12 @@ export function SMNTCSurface(props: SMNTCSurfaceProps): any {
     intensity = DEFAULTS.intensity,
     speed = DEFAULTS.speed,
     contourLines = DEFAULTS.contourLines,
+    angle = DEFAULTS.angle,
+    grain = DEFAULTS.grain,
+    glow = DEFAULTS.glow,
+    chromatic = DEFAULTS.chromatic,
+    vignette = DEFAULTS.vignette,
+    blur = DEFAULTS.blur,
     scale = [4, 4, 4],
     position = [0, 0, 0],
     rotation = [-Math.PI / 2, 0, 0],
@@ -109,6 +115,12 @@ export function SMNTCSurface(props: SMNTCSurfaceProps): any {
       intensity,
       speed,
       contourLines,
+      angle,
+      grain,
+      glow,
+      chromatic,
+      vignette,
+      blur,
       camera,
       domElement: gl.domElement,
     });
@@ -136,8 +148,14 @@ export function SMNTCSurface(props: SMNTCSurfaceProps): any {
       intensity,
       speed,
       contourLines,
+      angle,
+      grain,
+      glow,
+      chromatic,
+      vignette,
+      blur,
     });
-  }, [surface, vibe, reactivity, palette, wireframe, intensity, speed, contourLines]);
+  }, [surface, vibe, reactivity, palette, wireframe, intensity, speed, contourLines, angle, grain, glow, chromatic, vignette, blur]);
 
   // Animation loop
   Fiber.useFrame(() => {

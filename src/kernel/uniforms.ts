@@ -30,6 +30,13 @@ export interface SMNTCUniforms {
   uBackgroundColor:     IUniform<Vector3>;
   uWireframe:           IUniform<number>;
   uWireframeWidth:      IUniform<number>;
+  // Post-Processing / VFX uniforms
+  uAngle:               IUniform<number>;
+  uGrain:               IUniform<number>;
+  uGlow:                IUniform<number>;
+  uChromatic:           IUniform<number>;
+  uVignette:            IUniform<number>;
+  uBlur:                IUniform<number>;
 }
 
 /**
@@ -56,6 +63,13 @@ export function createUniforms(constants: ShaderConstants): SMNTCUniforms {
     uBackgroundColor:     { value: new Vector3(...constants.backgroundColor) },
     uWireframe:           { value: constants.wireframe ? 1.0 : 0.0 },
     uWireframeWidth:      { value: constants.wireframeWidth },
+    // Post-Processing / VFX uniforms
+    uAngle:               { value: constants.angle * Math.PI / 180 },
+    uGrain:               { value: constants.grain },
+    uGlow:                { value: constants.glow },
+    uChromatic:           { value: constants.chromatic },
+    uVignette:            { value: constants.vignette },
+    uBlur:                { value: constants.blur },
   };
 }
 
@@ -83,6 +97,12 @@ export function patchUniforms(
   uniforms.uReactivityRadius.value    = constants.reactivityRadius;
   uniforms.uWireframe.value           = constants.wireframe ? 1.0 : 0.0;
   uniforms.uWireframeWidth.value      = constants.wireframeWidth;
+  uniforms.uAngle.value               = constants.angle * Math.PI / 180;
+  uniforms.uGrain.value               = constants.grain;
+  uniforms.uGlow.value                = constants.glow;
+  uniforms.uChromatic.value           = constants.chromatic;
+  uniforms.uVignette.value            = constants.vignette;
+  uniforms.uBlur.value                = constants.blur;
 
   uniforms.uPrimaryColor.value.set(...constants.primaryColor);
   uniforms.uAccentColor.value.set(...constants.accentColor);

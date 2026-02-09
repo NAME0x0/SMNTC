@@ -3,110 +3,492 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SMNTC — Topographic Wave Demo</title>
+  <title>SMNTC — Semantic Shader Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; overflow: hidden; font-family: 'SF Mono', 'Fira Code', monospace; }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --panel-bg: rgba(10, 10, 18, 0.55);
+      --panel-border: rgba(255, 255, 255, 0.07);
+      --panel-highlight: rgba(255, 255, 255, 0.04);
+      --text-primary: rgba(255, 255, 255, 0.88);
+      --text-secondary: rgba(255, 255, 255, 0.45);
+      --text-dim: rgba(255, 255, 255, 0.25);
+      --accent: rgba(120, 160, 255, 0.7);
+      --pill-bg: rgba(255, 255, 255, 0.04);
+      --pill-hover: rgba(255, 255, 255, 0.08);
+      --pill-active-bg: rgba(255, 255, 255, 0.12);
+      --pill-active-border: rgba(255, 255, 255, 0.3);
+      --radius: 10px;
+      --radius-sm: 6px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
     canvas { display: block; }
 
-    #controls {
+    /* ── Watermark ─────────────────────────────────── */
+    #watermark {
       position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 8px;
-      z-index: 10;
+      top: 28px;
+      left: 28px;
+      z-index: 20;
+      pointer-events: none;
+      user-select: none;
     }
-
-    #controls button {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #e0e0e0;
-      padding: 8px 16px;
-      font-size: 11px;
-      font-family: inherit;
-      letter-spacing: 0.5px;
+    #watermark .logo {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: rgba(255,255,255,0.18);
       text-transform: uppercase;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: all 0.2s ease;
+    }
+    #watermark .sub {
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.10);
+      margin-top: 3px;
+      text-transform: uppercase;
     }
 
-    #controls button:hover {
-      background: rgba(255,255,255,0.12);
-      border-color: rgba(255,255,255,0.3);
-    }
-
-    #controls button.active {
-      background: rgba(255,255,255,0.15);
-      border-color: rgba(255,255,255,0.5);
-      color: #fff;
-    }
-
-    #info {
+    /* ── Panel ──────────────────────────────────────── */
+    #panel {
       position: fixed;
-      top: 24px;
-      left: 24px;
-      color: rgba(255,255,255,0.4);
-      font-size: 11px;
-      line-height: 1.6;
-      letter-spacing: 0.3px;
-      z-index: 10;
+      top: 16px;
+      right: 16px;
+      bottom: 16px;
+      width: 310px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(40px) saturate(1.4);
+      -webkit-backdrop-filter: blur(40px) saturate(1.4);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
     }
 
-    #info strong {
-      color: rgba(255,255,255,0.7);
-      font-weight: 500;
+    #panel.collapsed {
+      transform: translateX(calc(100% + 20px));
+      opacity: 0;
+      pointer-events: none;
     }
 
-    #fps {
+    #panel-toggle {
       position: fixed;
       top: 24px;
       right: 24px;
-      color: rgba(255,255,255,0.3);
+      z-index: 101;
+      width: 36px;
+      height: 36px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-size: 16px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+    #panel-toggle:hover { background: var(--pill-hover); color: var(--text-primary); }
+    #panel.collapsed ~ #panel-toggle { display: flex; }
+
+    /* Header */
+    .panel-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .panel-header .title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+    .panel-header .fps {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+    }
+    .panel-header .close-btn {
+      display: none;
+      width: 24px; height: 24px;
+      background: none; border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 14px;
+      border-radius: 4px;
+      transition: var(--transition);
+    }
+    .panel-header .close-btn:hover { color: var(--text-primary); background: var(--pill-hover); }
+
+    /* Scroll body */
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 6px 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.08) transparent;
+    }
+    .panel-body::-webkit-scrollbar { width: 4px; }
+    .panel-body::-webkit-scrollbar-track { background: transparent; }
+    .panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+    /* ── Section ───────────────────────────────────── */
+    .section {
+      padding: 0 16px;
+      margin-bottom: 2px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 4px;
+      cursor: pointer;
+      user-select: none;
+      transition: var(--transition);
+      border-radius: var(--radius-sm);
+    }
+    .section-header:hover { background: var(--panel-highlight); }
+    .section-header .chevron {
+      font-size: 8px;
+      color: var(--text-dim);
+      transition: transform 0.25s ease;
+      flex-shrink: 0;
+      width: 12px;
+      text-align: center;
+    }
+    .section.closed .chevron { transform: rotate(-90deg); }
+    .section-header .label {
       font-size: 10px;
-      z-index: 10;
+      font-weight: 600;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      flex: 1;
+    }
+    .section-header .hint {
+      font-size: 9px;
+      font-weight: 400;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+    }
+    .section-content {
+      padding: 4px 0 8px;
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.25s ease;
+      max-height: 600px;
+      opacity: 1;
+    }
+    .section.closed .section-content {
+      max-height: 0;
+      opacity: 0;
+      padding: 0;
+    }
+
+    /* ── Pills ─────────────────────────────────────── */
+    .pill-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .pill {
+      padding: 5px 11px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.4px;
+      color: var(--text-secondary);
+      background: var(--pill-bg);
+      border: 1px solid transparent;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+      user-select: none;
+      outline: none;
+      font-family: inherit;
+    }
+    .pill:hover {
+      background: var(--pill-hover);
+      color: var(--text-primary);
+      border-color: rgba(255,255,255,0.08);
+    }
+    .pill.active {
+      background: var(--pill-active-bg);
+      border-color: var(--pill-active-border);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(255,255,255,0.04);
+    }
+
+    /* ── Color Swatches ────────────────────────────── */
+    .swatch-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .swatch {
+      position: relative;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all var(--transition);
+      border: 2px solid transparent;
+      outline: none;
+      font-size: 0;
+    }
+    .swatch::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1.5px solid transparent;
+      transition: border-color var(--transition);
+    }
+    .swatch:hover {
+      transform: scale(1.15);
+    }
+    .swatch.active {
+      border-color: rgba(255,255,255,0.6);
+    }
+    .swatch.active::after {
+      border-color: rgba(255,255,255,0.15);
+    }
+    .swatch .swatch-tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      background: rgba(0,0,0,0.85);
+      color: var(--text-primary);
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      text-transform: capitalize;
+    }
+    .swatch:hover .swatch-tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Sliders ───────────────────────────────────── */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 0;
+    }
+    .slider-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      width: 70px;
+      flex-shrink: 0;
+      letter-spacing: 0.3px;
+    }
+    .slider-track {
+      flex: 1;
+      position: relative;
+      height: 20px;
+      display: flex;
+      align-items: center;
+    }
+    .slider-track input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    }
+    .slider-track input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 0 6px rgba(255,255,255,0.1);
+    }
+    .slider-track input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: 0 0 12px rgba(255,255,255,0.2);
+    }
+    .slider-track input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+    }
+    .slider-value {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-dim);
+      width: 34px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+
+    /* ── Keyboard hints ────────────────────────────── */
+    .panel-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--panel-border);
+      flex-shrink: 0;
+    }
+    .kbd-hint {
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+      line-height: 1.7;
+    }
+    kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      font-size: 9px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 3px;
+      color: var(--text-secondary);
+      margin: 0 1px;
+    }
+
+    /* ── Responsive ────────────────────────────────── */
+    @media (max-width: 700px) {
+      #panel {
+        width: 280px;
+        top: 8px;
+        right: 8px;
+        bottom: 8px;
+        border-radius: 12px;
+      }
+      .panel-header .close-btn { display: flex; align-items: center; justify-content: center; }
+      #panel-toggle { display: flex; }
     }
   </style>
 </head>
 <body>
 
-<div id="info">
-  <strong>SMNTC</strong> — Semantic Shader Engine<br/>
-  Topographic Wave Demo v1.1.0<br/><br/>
-  Move cursor to interact<br/>
-  Click buttons below to switch states
+<!-- ── Watermark ──────────────────────────────────── -->
+<div id="watermark">
+  <div class="logo">SMNTC</div>
+  <div class="sub">Semantic Shader Engine</div>
 </div>
 
-<div id="fps">-- FPS</div>
+<!-- ── Panel Toggle (mobile / collapsed) ─────────── -->
+<button id="panel-toggle" aria-label="Open controls">&#9664;</button>
 
-<div id="controls">
-  <!-- Vibe buttons -->
-  <button data-vibe="stable">Stable</button>
-  <button data-vibe="calm" class="active">Calm</button>
-  <button data-vibe="agitated">Agitated</button>
-  <button data-vibe="chaotic">Chaotic</button>
+<!-- ── Control Panel ─────────────────────────────── -->
+<div id="panel">
+  <div class="panel-header">
+    <span class="title">Controls</span>
+    <span class="fps" id="fps">-- fps</span>
+    <button class="close-btn" id="panel-close" aria-label="Close panel">&#10005;</button>
+  </div>
 
-  <span style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px"></span>
+  <div class="panel-body">
 
-  <!-- Surface buttons -->
-  <button data-surface="topographic" class="active">Topo</button>
-  <button data-surface="crystalline">Crystal</button>
-  <button data-surface="fluid">Fluid</button>
-  <button data-surface="glitch">Glitch</button>
+    <!-- Surface -->
+    <div class="section" data-section="surface">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="chevron">&#9660;</span>
+        <span class="label">Surface</span>
+        <span class="hint">1 &#8211; 8</span>
+      </div>
+      <div class="section-content">
+        <div class="pill-group" id="surface-pills"></div>
+      </div>
+    </div>
 
-  <span style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px"></span>
+    <!-- Vibe -->
+    <div class="section" data-section="vibe">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="chevron">&#9660;</span>
+        <span class="label">Vibe</span>
+        <span class="hint">Q W E R T Y U I O</span>
+      </div>
+      <div class="section-content">
+        <div class="pill-group" id="vibe-pills"></div>
+      </div>
+    </div>
 
-  <!-- Palette buttons -->
-  <button data-palette="monochrome" class="active">Mono</button>
-  <button data-palette="ember">Ember</button>
-  <button data-palette="arctic">Arctic</button>
-  <button data-palette="neon">Neon</button>
-  <button data-palette="phantom">Phantom</button>
+    <!-- Palette -->
+    <div class="section" data-section="palette">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="chevron">&#9660;</span>
+        <span class="label">Palette</span>
+      </div>
+      <div class="section-content">
+        <div class="swatch-group" id="palette-swatches"></div>
+      </div>
+    </div>
+
+    <!-- VFX -->
+    <div class="section" data-section="vfx">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="chevron">&#9660;</span>
+        <span class="label">VFX</span>
+      </div>
+      <div class="section-content" id="vfx-sliders"></div>
+    </div>
+
+    <!-- Parameters -->
+    <div class="section" data-section="params">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="chevron">&#9660;</span>
+        <span class="label">Parameters</span>
+      </div>
+      <div class="section-content" id="param-sliders"></div>
+    </div>
+
+  </div>
+
+  <div class="panel-footer">
+    <div class="kbd-hint">
+      <kbd>1</kbd>&#8211;<kbd>8</kbd> Surface &nbsp;&middot;&nbsp;
+      <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><kbd>T</kbd><kbd>Y</kbd><kbd>U</kbd><kbd>I</kbd><kbd>O</kbd> Vibe
+    </div>
+  </div>
 </div>
 
-<!-- Three.js from CDN -->
+<!-- ── Three.js CDN ──────────────────────────────── -->
 <script type="importmap">
 {
   "imports": {
@@ -117,47 +499,66 @@
 
 <script type="module">
 // ============================================================================
-// SMNTC — Standalone Demo (Inline Kernel)
-// This demo embeds the core logic directly for zero-build-step demonstration.
-// In production, you'd import from the 'smntc' package.
+// SMNTC — Premium Showcase Demo (Fully Self-Contained)
+// All shader code, spring physics, and semantic dictionaries are inlined.
+// In production, import from the 'smntc' package instead.
 // ============================================================================
 
 import * as THREE from 'three';
 
 // ---------------------------------------------------------------------------
-// 1. Simplex Noise (JS version for any CPU-side needs)
+// 1. Semantic Dictionaries
 // ---------------------------------------------------------------------------
-
-// (Not needed for this demo — noise runs entirely on GPU via the shader.)
-
-// ---------------------------------------------------------------------------
-// 2. Semantic Dictionary (Inline)
-// ---------------------------------------------------------------------------
-
-const VIBE_MAP = {
-  stable:   { frequency: 0.1,  amplitude: 0.02, damping: 0.95, noiseSpeed: 0.05 },
-  calm:     { frequency: 0.5,  amplitude: 0.08, damping: 0.80, noiseSpeed: 0.15 },
-  agitated: { frequency: 2.5,  amplitude: 0.20, damping: 0.40, noiseSpeed: 0.60 },
-  chaotic:  { frequency: 5.0,  amplitude: 0.40, damping: 0.05, noiseSpeed: 1.50 },
-};
 
 const SURFACE_MAP = {
   topographic: { mode: 0, noiseScale: 1.0 },
   crystalline: { mode: 1, noiseScale: 2.5 },
   fluid:       { mode: 2, noiseScale: 0.6 },
   glitch:      { mode: 3, noiseScale: 3.0 },
+  organic:     { mode: 4, noiseScale: 0.8 },
+  terrain:     { mode: 5, noiseScale: 1.5 },
+  plasma:      { mode: 6, noiseScale: 2.0 },
+  wave:        { mode: 7, noiseScale: 0.5 },
+};
+
+const VIBE_MAP = {
+  stable:    { freq: 0.1,  amp: 0.02, noiseSpeed: 0.05 },
+  calm:      { freq: 0.5,  amp: 0.08, noiseSpeed: 0.15 },
+  agitated:  { freq: 2.5,  amp: 0.20, noiseSpeed: 0.60 },
+  chaotic:   { freq: 5.0,  amp: 0.40, noiseSpeed: 1.50 },
+  breathing: { freq: 0.08, amp: 0.05, noiseSpeed: 0.03 },
+  pulse:     { freq: 1.2,  amp: 0.15, noiseSpeed: 0.30 },
+  drift:     { freq: 0.3,  amp: 0.06, noiseSpeed: 0.10 },
+  storm:     { freq: 4.0,  amp: 0.35, noiseSpeed: 1.20 },
+  cinematic: { freq: 0.2,  amp: 0.12, noiseSpeed: 0.08 },
 };
 
 const PALETTE_MAP = {
-  monochrome: { primary: [0.878, 0.878, 0.878], accent: [1, 1, 1],           bg: [0, 0, 0] },
-  ember:      { primary: [1, 0.42, 0.21],       accent: [1, 0.67, 0],        bg: [0.04, 0.04, 0.04] },
-  arctic:     { primary: [0.533, 0.8, 1],        accent: [1, 1, 1],           bg: [0.02, 0.02, 0.063] },
-  neon:       { primary: [0, 1, 0.533],           accent: [1, 0, 1],           bg: [0.04, 0.04, 0.04] },
-  phantom:    { primary: [0.627, 0.627, 0.69],    accent: [0.376, 0.376, 0.627], bg: [0.031, 0.031, 0.047] },
+  monochrome: { primary: '#e0e0e0', accent: '#ffffff', bg: '#000000' },
+  ember:      { primary: '#ff6b35', accent: '#ffaa00', bg: '#0a0a0a' },
+  arctic:     { primary: '#88ccff', accent: '#ffffff', bg: '#050510' },
+  neon:       { primary: '#00ff88', accent: '#ff00ff', bg: '#0a0a0a' },
+  phantom:    { primary: '#a0a0b0', accent: '#6060a0', bg: '#08080c' },
+  ocean:      { primary: '#0077b6', accent: '#00b4d8', bg: '#03071e' },
+  sunset:     { primary: '#f77f00', accent: '#d62828', bg: '#0d0208' },
+  matrix:     { primary: '#00ff41', accent: '#008f11', bg: '#000000' },
+  vapor:      { primary: '#ff71ce', accent: '#01cdfe', bg: '#0a0012' },
+  gold:       { primary: '#ffd700', accent: '#daa520', bg: '#0a0800' },
+  infrared:   { primary: '#ff0055', accent: '#ff6600', bg: '#0a0005' },
+  aurora:     { primary: '#43b581', accent: '#7289da', bg: '#020810' },
+  midnight:   { primary: '#c0c0c8', accent: '#4a6fa5', bg: '#0a0e1a' },
 };
 
+function hexToVec3(hex) {
+  return [
+    parseInt(hex.slice(1, 3), 16) / 255,
+    parseInt(hex.slice(3, 5), 16) / 255,
+    parseInt(hex.slice(5, 7), 16) / 255,
+  ];
+}
+
 // ---------------------------------------------------------------------------
-// 3. Spring Physics (Inline)
+// 2. Spring Physics (Inline)
 // ---------------------------------------------------------------------------
 
 class Spring {
@@ -168,20 +569,15 @@ class Spring {
     this.stiffness = stiffness;
     this.damping = damping;
   }
-
-  setTarget(t) {
-    this.target = t;
-  }
-
+  setTarget(t) { this.target = t; }
   step(dt) {
     const safeDt = Math.min(dt, 0.064);
-    const displacement = this.value - this.target;
-    const springForce = -this.stiffness * displacement;
-    const dampingForce = -this.damping * this.velocity;
-    this.velocity += (springForce + dampingForce) * safeDt;
+    const disp = this.value - this.target;
+    const springF = -this.stiffness * disp;
+    const dampF = -this.damping * this.velocity;
+    this.velocity += (springF + dampF) * safeDt;
     this.value += this.velocity * safeDt;
-
-    if (Math.abs(this.velocity) < 0.001 && Math.abs(displacement) < 0.001) {
+    if (Math.abs(this.velocity) < 0.0005 && Math.abs(disp) < 0.0005) {
       this.value = this.target;
       this.velocity = 0;
     }
@@ -190,7 +586,7 @@ class Spring {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Vertex Shader (GLSL)
+// 3. Vertex Shader — All 8 Surface Modes + Angle Uniform
 // ---------------------------------------------------------------------------
 
 const vertexShader = /* glsl */ `
@@ -205,6 +601,8 @@ uniform float uNoiseSpeed;
 uniform float uIntensity;
 uniform float uSpeed;
 uniform float uContourLines;
+uniform float uAngle;
+
 uniform float uReactivityMode;
 uniform float uReactivityStrength;
 uniform float uReactivityRadius;
@@ -216,7 +614,7 @@ varying vec3  vPosition;
 varying float vDisplacement;
 varying vec2  vUv;
 
-// Simplex 3D noise
+// ── Simplex 3D Noise ──────────────────────────────
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 permute(vec4 x) { return mod289(((x * 34.0) + 10.0) * x); }
@@ -244,11 +642,11 @@ float snoise(vec3 v) {
   vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
   vec4 x_ = floor(j * ns.z);
   vec4 y_ = floor(j - 7.0 * x_);
-  vec4 x2_ = x_ * ns.x + ns.yyyy;
-  vec4 y2_ = y_ * ns.x + ns.yyyy;
-  vec4 h = 1.0 - abs(x2_) - abs(y2_);
-  vec4 b0 = vec4(x2_.xy, y2_.xy);
-  vec4 b1 = vec4(x2_.zw, y2_.zw);
+  vec4 xv = x_ * ns.x + ns.yyyy;
+  vec4 yv = y_ * ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(xv) - abs(yv);
+  vec4 b0 = vec4(xv.xy, yv.xy);
+  vec4 b1 = vec4(xv.zw, yv.zw);
   vec4 s0 = floor(b0) * 2.0 + 1.0;
   vec4 s1 = floor(b1) * 2.0 + 1.0;
   vec4 sh = -step(h, vec4(0.0));
@@ -258,103 +656,142 @@ float snoise(vec3 v) {
   vec3 p1 = vec3(a0.zw, h.y);
   vec3 p2 = vec3(a1.xy, h.z);
   vec3 p3 = vec3(a1.zw, h.w);
-  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
   p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
-  vec4 m = max(0.5 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  vec4 m = max(0.5 - vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);
   m = m * m;
-  return 105.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+  return 105.0 * dot(m*m, vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
 }
 
-// Voronoi
+// ── Voronoi Distance ──────────────────────────────
 float voronoi(vec3 p) {
-  vec3 i_st = floor(p);
-  vec3 f_st = fract(p);
-  float minDist = 1.0;
-  for (int z = -1; z <= 1; z++) {
-    for (int y = -1; y <= 1; y++) {
-      for (int x = -1; x <= 1; x++) {
-        vec3 neighbor = vec3(float(x), float(y), float(z));
-        vec3 pt = vec3(
-          fract(sin(dot(i_st + neighbor, vec3(12.9898,78.233,45.164))) * 43758.5453),
-          fract(sin(dot(i_st + neighbor, vec3(93.989,67.345,12.456))) * 28461.2534),
-          fract(sin(dot(i_st + neighbor, vec3(43.332,93.532,65.123))) * 63728.1927)
-        );
-        float dist = length(neighbor + pt - f_st);
-        minDist = min(minDist, dist);
-      }
-    }
+  vec3 i_st = floor(p); vec3 f_st = fract(p);
+  float md = 1.0;
+  for(int z=-1;z<=1;z++) for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++) {
+    vec3 nb = vec3(float(x),float(y),float(z));
+    vec3 pt = vec3(
+      fract(sin(dot(i_st+nb,vec3(12.9898,78.233,45.164)))*43758.5453),
+      fract(sin(dot(i_st+nb,vec3(93.989,67.345,12.456)))*28461.2534),
+      fract(sin(dot(i_st+nb,vec3(43.332,93.532,65.123)))*63728.1927));
+    md = min(md, length(nb+pt-f_st));
   }
-  return minDist;
+  return md;
 }
 
-float topographicDisp(vec3 pos, float t) {
-  float w1 = sin(pos.x * uFrequency + t * 0.8) * 0.5;
-  float w2 = sin(pos.y * uFrequency * 1.3 + t * 0.6) * 0.3;
-  float w3 = cos(pos.x * uFrequency * 0.7 + pos.y * uFrequency * 0.9 + t * 1.1) * 0.2;
-  return (w1 + w2 + w3) * uAmplitude * uIntensity;
+// ── Surface Displacement (8 modes) ────────────────
+float topographicDisp(vec3 p, float t) {
+  float w1 = sin(p.x*uFrequency+t*0.8)*0.5;
+  float w2 = sin(p.y*uFrequency*1.3+t*0.6)*0.3;
+  float w3 = cos(p.x*uFrequency*0.7+p.y*uFrequency*0.9+t*1.1)*0.2;
+  return (w1+w2+w3)*uAmplitude*uIntensity;
 }
 
-float crystallineDisp(vec3 pos, float t) {
-  float v = voronoi(pos * uNoiseScale + vec3(0.0, 0.0, t * uNoiseSpeed));
-  return floor(v * 8.0) / 8.0 * uAmplitude * uIntensity;
+float crystallineDisp(vec3 p, float t) {
+  float v = voronoi(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  return floor(v*8.0)/8.0*uAmplitude*uIntensity;
 }
 
-float fluidDisp(vec3 pos, float t) {
-  float n1 = snoise(pos * uNoiseScale + vec3(0.0, 0.0, t * uNoiseSpeed));
-  float n2 = snoise(pos * uNoiseScale * 2.0 + vec3(t * uNoiseSpeed * 0.5));
-  return (n1 * 0.6 + n2 * 0.4) * uAmplitude * uIntensity;
+float fluidDisp(vec3 p, float t) {
+  float n1 = snoise(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float n2 = snoise(p*uNoiseScale*2.0+vec3(t*uNoiseSpeed*0.5));
+  return (n1*0.6+n2*0.4)*uAmplitude*uIntensity;
 }
 
-float glitchDisp(vec3 pos, float t) {
-  float base = snoise(pos * uNoiseScale + vec3(0.0, 0.0, t * uNoiseSpeed));
-  float q = floor(base * 4.0 + 0.5) / 4.0;
-  float burst = step(0.92, fract(sin(dot(pos.xy + t, vec2(12.9898, 78.233))) * 43758.5453));
-  return (q + burst * 0.3) * uAmplitude * uIntensity;
+float glitchDisp(vec3 p, float t) {
+  float base = snoise(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float q = floor(base*4.0+0.5)/4.0;
+  float burst = step(0.92,fract(sin(dot(p.xy+t,vec2(12.9898,78.233)))*43758.5453));
+  return (q+burst*0.3)*uAmplitude*uIntensity;
+}
+
+float organicDisp(vec3 p, float t) {
+  float w1 = snoise(p*uNoiseScale*0.5+vec3(t*uNoiseSpeed*0.3));
+  float w2 = snoise(p*uNoiseScale*0.5+vec3(0.0,t*uNoiseSpeed*0.4,0.0));
+  vec3 wp = p+vec3(w1,w2,0.0)*0.5;
+  float n = snoise(wp*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float n2 = snoise(wp*uNoiseScale*1.5+vec3(t*uNoiseSpeed*0.7));
+  return (n*0.7+n2*0.3)*uAmplitude*uIntensity;
+}
+
+float terrainDisp(vec3 p, float t) {
+  float total=0.0, amp=1.0, freq=1.0, weight=1.0;
+  for(int i=0;i<5;i++){
+    float n=abs(snoise(p*uNoiseScale*freq+vec3(0.0,0.0,t*uNoiseSpeed*0.2)));
+    n=1.0-n; n=n*n; n*=weight;
+    weight=clamp(n*2.0,0.0,1.0);
+    total+=n*amp; freq*=2.1; amp*=0.5;
+  }
+  return total*uAmplitude*uIntensity*0.5;
+}
+
+float plasmaDisp(vec3 p, float t) {
+  float n1=sin(p.x*uNoiseScale*1.5+t*uNoiseSpeed*2.0);
+  float n2=sin(p.y*uNoiseScale*1.5+t*uNoiseSpeed*1.5);
+  float n3=snoise(p*uNoiseScale+vec3(t*uNoiseSpeed));
+  float n4=sin((p.x+p.y)*uNoiseScale+t*uNoiseSpeed*3.0)*0.5;
+  return (n1+n2+n3+n4)*0.25*uAmplitude*uIntensity;
+}
+
+float waveDisp(vec3 p, float t) {
+  float w=0.0;
+  w+=sin(p.x*uFrequency*2.0+t*1.5)*0.4;
+  w+=sin(p.x*uFrequency*0.8-p.y*uFrequency*0.5+t*1.2)*0.3;
+  w+=sin(p.y*uFrequency*1.5+t*0.9)*0.2;
+  w+=sin((p.x+p.y)*uFrequency*0.6+t*2.0)*0.1;
+  w+=snoise(p*uNoiseScale*0.5+vec3(0.0,0.0,t*uNoiseSpeed*0.5))*0.15;
+  return w*uAmplitude*uIntensity;
 }
 
 float getDisplacement(vec3 pos, float t) {
-  if (uSurfaceMode < 0.5) return topographicDisp(pos, t);
-  if (uSurfaceMode < 1.5) return crystallineDisp(pos, t);
-  if (uSurfaceMode < 2.5) return fluidDisp(pos, t);
-  return glitchDisp(pos, t);
+  // Apply angle rotation to displacement sampling
+  float ca=cos(uAngle), sa=sin(uAngle);
+  vec3 rp=vec3(pos.x*ca-pos.y*sa, pos.x*sa+pos.y*ca, pos.z);
+  if(uSurfaceMode<0.5) return topographicDisp(rp,t);
+  if(uSurfaceMode<1.5) return crystallineDisp(rp,t);
+  if(uSurfaceMode<2.5) return fluidDisp(rp,t);
+  if(uSurfaceMode<3.5) return glitchDisp(rp,t);
+  if(uSurfaceMode<4.5) return organicDisp(rp,t);
+  if(uSurfaceMode<5.5) return terrainDisp(rp,t);
+  if(uSurfaceMode<6.5) return plasmaDisp(rp,t);
+  return waveDisp(rp,t);
 }
 
+// ── Reactivity ────────────────────────────────────
 float reactivityOffset(vec3 wp) {
-  if (uReactivityMode < 0.5) return 0.0;
-  float dist = distance(wp, uPointer);
-  float influence = 1.0 - smoothstep(0.0, uReactivityRadius, dist);
-  if (uReactivityMode < 1.5) return influence * uReactivityStrength * 0.3;
-  if (uReactivityMode < 2.5) return -influence * uReactivityStrength * 0.3;
-  float sr = uShockTime * 3.0;
-  float sw = sin((dist - sr) * 10.0) * exp(-uShockTime * 2.0);
-  float si = smoothstep(sr+1.0, sr, dist) * smoothstep(sr-1.0, sr, dist);
-  return sw * si * uReactivityStrength * 0.5;
+  if(uReactivityMode<0.5) return 0.0;
+  float dist=distance(wp,uPointer);
+  float inf=1.0-smoothstep(0.0,uReactivityRadius,dist);
+  if(uReactivityMode<1.5) return inf*uReactivityStrength*0.3;
+  if(uReactivityMode<2.5) return -inf*uReactivityStrength*0.3;
+  float sr=uShockTime*3.0;
+  float sw=sin((dist-sr)*10.0)*exp(-uShockTime*2.0);
+  float si=smoothstep(sr+1.0,sr,dist)*smoothstep(sr-1.0,sr,dist);
+  return sw*si*uReactivityStrength*0.5;
 }
 
+// ── Finite-difference normal recalc ───────────────
 vec3 computeNormal(vec3 pos, vec3 norm, float t) {
-  float eps = 0.01;
-  float dX = getDisplacement(pos + vec3(eps,0,0), t) - getDisplacement(pos - vec3(eps,0,0), t);
-  float dZ = getDisplacement(pos + vec3(0,0,eps), t) - getDisplacement(pos - vec3(0,0,eps), t);
-  return normalize(norm + vec3(-dX/(2.0*eps), 1.0, -dZ/(2.0*eps)));
+  float eps=0.01;
+  float dX=getDisplacement(pos+vec3(eps,0.0,0.0),t)-getDisplacement(pos-vec3(eps,0.0,0.0),t);
+  float dZ=getDisplacement(pos+vec3(0.0,0.0,eps),t)-getDisplacement(pos-vec3(0.0,0.0,eps),t);
+  return normalize(norm+vec3(-dX/(2.0*eps),1.0,-dZ/(2.0*eps)));
 }
 
 void main() {
-  float t = mod(uTime * uSpeed, 6283.1853);
-  vec3 pos = position;
-  float disp = getDisplacement(pos, t) + reactivityOffset(pos);
-  vec3 displaced = pos + normal * disp;
-
-  vNormal = normalize(normalMatrix * computeNormal(pos, normal, t));
-  vPosition = (modelViewMatrix * vec4(displaced, 1.0)).xyz;
-  vDisplacement = disp;
-  vUv = uv;
-
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+  float t=mod(uTime*uSpeed,6283.1853);
+  vec3 pos=position;
+  float disp=getDisplacement(pos,t)+reactivityOffset(pos);
+  vec3 displaced=pos+normal*disp;
+  vNormal=normalize(normalMatrix*computeNormal(pos,normal,t));
+  vPosition=(modelViewMatrix*vec4(displaced,1.0)).xyz;
+  vDisplacement=disp;
+  vUv=uv;
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(displaced,1.0);
 }
 `;
 
 // ---------------------------------------------------------------------------
-// 5. Fragment Shader (GLSL)
+// 4. Fragment Shader — Full VFX Pipeline
 // ---------------------------------------------------------------------------
 
 const fragmentShader = /* glsl */ `
@@ -362,62 +799,141 @@ precision highp float;
 
 uniform vec3  uPrimaryColor;
 uniform vec3  uAccentColor;
+uniform vec3  uBackgroundColor;
 uniform float uContourLines;
+uniform float uSurfaceMode;
 uniform float uWireframe;
 uniform float uWireframeWidth;
 uniform float uIntensity;
+uniform float uTime;
+
+// VFX Uniforms
+uniform float uGrain;
+uniform float uGlow;
+uniform float uChromatic;
+uniform float uVignette;
+uniform float uBlur;
 
 varying vec3  vNormal;
 varying vec3  vPosition;
 varying float vDisplacement;
 varying vec2  vUv;
 
+// ── Wireframe via screen-space derivatives ────────
 float edgeFactor() {
-  vec2 grid = abs(fract(vUv * uContourLines - 0.5) - 0.5);
-  vec2 dGrid = fwidth(vUv * uContourLines);
-  vec2 a2 = smoothstep(vec2(0.0), dGrid * uWireframeWidth * 1.5, grid);
-  return min(a2.x, a2.y);
+  vec2 grid=abs(fract(vUv*uContourLines-0.5)-0.5);
+  vec2 dG=fwidth(vUv*uContourLines);
+  vec2 a2=smoothstep(vec2(0.0),dG*uWireframeWidth*1.5,grid);
+  return min(a2.x,a2.y);
 }
 
+// ── Contour lines (displacement isoheight) ────────
 float contourFactor() {
-  float sd = vDisplacement * uContourLines * 10.0;
-  float line = abs(fract(sd) - 0.5);
-  float dLine = fwidth(sd);
-  return smoothstep(0.0, dLine * 1.5, line);
+  float sd=vDisplacement*uContourLines*10.0;
+  float line=abs(fract(sd)-0.5);
+  float dL=fwidth(sd);
+  return smoothstep(0.0,dL*1.5,line);
 }
 
+// ── Enhanced Phong Lighting ───────────────────────
 vec3 lighting(vec3 base) {
-  vec3 ld = normalize(vec3(0.5, 1.0, 0.8));
-  vec3 vd = normalize(-vPosition);
-  vec3 n  = normalize(vNormal);
-  float ambient = 0.15;
-  float diff = max(dot(n, ld), 0.0);
-  vec3 halfDir = normalize(ld + vd);
-  float spec = pow(max(dot(n, halfDir), 0.0), 64.0) * 0.3;
-  float rim = pow(1.0 - max(dot(vd, n), 0.0), 3.0) * 0.2;
-  return base * (ambient + diff * 0.7) + vec3(spec + rim);
+  vec3 ld=normalize(vec3(0.5,1.0,0.8));
+  vec3 vd=normalize(-vPosition);
+  vec3 n=normalize(vNormal);
+  float ambient=0.15;
+  float diff=max(dot(n,ld),0.0);
+  vec3 halfDir=normalize(ld+vd);
+  float spec=pow(max(dot(n,halfDir),0.0),64.0)*0.3;
+  float rim=pow(1.0-max(dot(vd,n),0.0),3.0)*0.2;
+  vec3 fillDir=normalize(vec3(-0.3,0.5,-0.6));
+  float fill=max(dot(n,fillDir),0.0)*0.15;
+  return base*(ambient+diff*0.7+fill)+vec3(spec+rim);
+}
+
+// ── Film Grain ────────────────────────────────────
+float filmGrain(vec2 uv, float t) {
+  float n1=fract(sin(dot(uv*1000.0+t*100.0,vec2(12.9898,78.233)))*43758.5453);
+  float n2=fract(sin(dot(uv*800.0-t*50.0,vec2(63.7264,10.873)))*28462.6453);
+  return (n1*0.5+n2*0.5)*2.0-1.0;
+}
+
+// ── Vignette ──────────────────────────────────────
+float vignetteEffect(vec2 uv) {
+  vec2 c=uv-0.5;
+  return 1.0-smoothstep(0.3,0.85,length(c));
 }
 
 void main() {
-  float blend = smoothstep(-0.15, 0.15, vDisplacement) * uIntensity;
-  vec3 base = mix(uPrimaryColor, uAccentColor, blend);
+  float blend=smoothstep(-0.15,0.15,vDisplacement)*uIntensity;
+  vec3 base=mix(uPrimaryColor,uAccentColor,blend);
+  vec4 finalColor;
 
-  if (uWireframe > 0.5) {
-    float c = contourFactor();
-    float e = edgeFactor();
-    float lf = min(c, e);
-    vec3 lc = lighting(base);
-    float alpha = 1.0 - lf;
-    if (alpha < 0.05) discard;
-    gl_FragColor = vec4(lc, alpha);
+  if(uWireframe>0.5){
+    // ── Wireframe / Contour Rendering ──
+    float c=contourFactor();
+    float e=edgeFactor();
+    float lf=min(c,e);
+    vec3 lc=lighting(base);
+    // Glow on lines
+    if(uGlow>0.01){
+      float gf=(1.0-lf)*uGlow;
+      lc+=base*gf*0.5;
+      lc+=uAccentColor*gf*0.3;
+    }
+    float alpha=1.0-lf;
+    if(alpha<0.05) discard;
+    finalColor=vec4(lc,alpha);
   } else {
-    gl_FragColor = vec4(lighting(base), 1.0);
+    // ── Solid Displacement Rendering ──
+    vec3 litColor=lighting(base);
+    if(uGlow>0.01){
+      float brightness=dot(litColor,vec3(0.299,0.587,0.114));
+      litColor+=litColor*brightness*uGlow*0.4;
+    }
+    finalColor=vec4(litColor,1.0);
   }
+
+  // ── Post-Processing Pipeline ──
+
+  // Chromatic aberration
+  if(uChromatic>0.001){
+    vec2 center=vUv-0.5;
+    float dist=length(center);
+    float ao=dist*uChromatic*0.02;
+    float rS=smoothstep(-0.15,0.15,vDisplacement+ao)*uIntensity;
+    float bS=smoothstep(-0.15,0.15,vDisplacement-ao)*uIntensity;
+    vec3 rC=mix(uPrimaryColor,uAccentColor,rS);
+    vec3 bC=mix(uPrimaryColor,uAccentColor,bS);
+    finalColor.r=mix(finalColor.r,rC.r*1.1,uChromatic*0.5);
+    finalColor.b=mix(finalColor.b,bC.b*1.1,uChromatic*0.5);
+  }
+
+  // Film grain overlay
+  if(uGrain>0.001){
+    float grain=filmGrain(vUv,uTime)*uGrain*0.15;
+    finalColor.rgb+=grain;
+  }
+
+  // Vignette
+  if(uVignette>0.001){
+    float vig=vignetteEffect(vUv);
+    finalColor.rgb*=mix(1.0,vig,uVignette);
+  }
+
+  // Depth blur simulation
+  if(uBlur>0.001){
+    float depth=length(vPosition);
+    float bf=smoothstep(1.0,5.0,depth)*uBlur;
+    vec3 blurred=mix(finalColor.rgb,vec3(dot(finalColor.rgb,vec3(0.299,0.587,0.114))),bf*0.3);
+    finalColor.rgb=mix(finalColor.rgb,blurred,bf);
+  }
+
+  gl_FragColor=finalColor;
 }
 `;
 
 // ---------------------------------------------------------------------------
-// 6. Scene Setup
+// 5. Scene Setup
 // ---------------------------------------------------------------------------
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -427,32 +943,42 @@ renderer.setClearColor(0x000000);
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+const camera = new THREE.PerspectiveCamera(
+  45, window.innerWidth / window.innerHeight, 0.1, 100
+);
 camera.position.set(0, 2.5, 3.5);
 camera.lookAt(0, 0, 0);
 
-// High-density plane
+// High-density plane for detailed displacement
 const geometry = new THREE.PlaneGeometry(5, 5, 256, 256);
+
 const uniforms = {
-  uTime:                { value: 0 },
-  uSurfaceMode:         { value: 0 },
-  uFrequency:           { value: 0.5 },
-  uAmplitude:           { value: 0.08 },
-  uNoiseScale:          { value: 1.0 },
-  uNoiseSpeed:          { value: 0.15 },
-  uIntensity:           { value: 1.0 },
-  uSpeed:               { value: 1.0 },
-  uContourLines:        { value: 16 },
-  uReactivityMode:      { value: 1 },   // magnetic by default
-  uReactivityStrength:  { value: 0.5 },
-  uReactivityRadius:    { value: 2.0 },
-  uPointer:             { value: new THREE.Vector3(0, 0, 0) },
-  uShockTime:           { value: 100.0 },
-  uPrimaryColor:        { value: new THREE.Vector3(0.878, 0.878, 0.878) },
-  uAccentColor:         { value: new THREE.Vector3(1, 1, 1) },
-  uBackgroundColor:     { value: new THREE.Vector3(0, 0, 0) },
-  uWireframe:           { value: 1.0 },
-  uWireframeWidth:      { value: 1.0 },
+  uTime:               { value: 0 },
+  uSurfaceMode:        { value: 0 },
+  uFrequency:          { value: 0.5 },
+  uAmplitude:          { value: 0.08 },
+  uNoiseScale:         { value: 1.0 },
+  uNoiseSpeed:         { value: 0.15 },
+  uIntensity:          { value: 1.0 },
+  uSpeed:              { value: 1.0 },
+  uContourLines:       { value: 16 },
+  uAngle:              { value: 0.0 },
+  uReactivityMode:     { value: 1 },   // magnetic
+  uReactivityStrength: { value: 0.5 },
+  uReactivityRadius:   { value: 2.0 },
+  uPointer:            { value: new THREE.Vector3(0, 0, 0) },
+  uShockTime:          { value: 100.0 },
+  uPrimaryColor:       { value: new THREE.Vector3(0.878, 0.878, 0.878) },
+  uAccentColor:        { value: new THREE.Vector3(1, 1, 1) },
+  uBackgroundColor:    { value: new THREE.Vector3(0, 0, 0) },
+  uWireframe:          { value: 1.0 },
+  uWireframeWidth:     { value: 1.0 },
+  // VFX
+  uGrain:              { value: 0.0 },
+  uGlow:               { value: 0.0 },
+  uChromatic:          { value: 0.0 },
+  uVignette:           { value: 0.0 },
+  uBlur:               { value: 0.0 },
 };
 
 const material = new THREE.ShaderMaterial({
@@ -471,7 +997,7 @@ mesh.rotation.x = -Math.PI / 2;
 scene.add(mesh);
 
 // ---------------------------------------------------------------------------
-// 7. Spring-animated state
+// 6. Spring-Animated State
 // ---------------------------------------------------------------------------
 
 const springs = {
@@ -479,45 +1005,199 @@ const springs = {
   amplitude:  new Spring(0.08),
   noiseScale: new Spring(1.0),
   noiseSpeed: new Spring(0.15),
-  primaryR:   new Spring(0.878),
-  primaryG:   new Spring(0.878),
-  primaryB:   new Spring(0.878),
-  accentR:    new Spring(1),
-  accentG:    new Spring(1),
-  accentB:    new Spring(1),
-  bgR:        new Spring(0),
-  bgG:        new Spring(0),
-  bgB:        new Spring(0),
+  intensity:  new Spring(1.0),
+  speed:      new Spring(1.0),
+  angle:      new Spring(0.0),
+  grain:      new Spring(0.0),
+  glow:       new Spring(0.0),
+  chromatic:  new Spring(0.0),
+  vignette:   new Spring(0.0),
+  primaryR: new Spring(0.878), primaryG: new Spring(0.878), primaryB: new Spring(0.878),
+  accentR:  new Spring(1),     accentG:  new Spring(1),     accentB:  new Spring(1),
+  bgR:      new Spring(0),     bgG:      new Spring(0),     bgB:      new Spring(0),
 };
 
+// Active selections
+let activeSurface = 'topographic';
+let activeVibe = 'calm';
+let activePalette = 'monochrome';
+
 function setVibe(vibe) {
+  activeVibe = vibe;
   const v = VIBE_MAP[vibe];
-  springs.frequency.setTarget(v.frequency);
-  springs.amplitude.setTarget(v.amplitude);
+  springs.frequency.setTarget(v.freq);
+  springs.amplitude.setTarget(v.amp);
   springs.noiseSpeed.setTarget(v.noiseSpeed);
+  activateButton('vibe', vibe);
 }
 
 function setSurface(surface) {
+  activeSurface = surface;
   const s = SURFACE_MAP[surface];
-  uniforms.uSurfaceMode.value = s.mode; // discrete — instant
+  uniforms.uSurfaceMode.value = s.mode;   // discrete — instant switch
   springs.noiseScale.setTarget(s.noiseScale);
+  activateButton('surface', surface);
 }
 
 function setPalette(palette) {
+  activePalette = palette;
   const p = PALETTE_MAP[palette];
-  springs.primaryR.setTarget(p.primary[0]);
-  springs.primaryG.setTarget(p.primary[1]);
-  springs.primaryB.setTarget(p.primary[2]);
-  springs.accentR.setTarget(p.accent[0]);
-  springs.accentG.setTarget(p.accent[1]);
-  springs.accentB.setTarget(p.accent[2]);
-  springs.bgR.setTarget(p.bg[0]);
-  springs.bgG.setTarget(p.bg[1]);
-  springs.bgB.setTarget(p.bg[2]);
+  const [pr, pg, pb] = hexToVec3(p.primary);
+  const [ar, ag, ab] = hexToVec3(p.accent);
+  const [br, bgv, bb] = hexToVec3(p.bg);
+  springs.primaryR.setTarget(pr); springs.primaryG.setTarget(pg); springs.primaryB.setTarget(pb);
+  springs.accentR.setTarget(ar);  springs.accentG.setTarget(ag);  springs.accentB.setTarget(ab);
+  springs.bgR.setTarget(br);      springs.bgG.setTarget(bgv);     springs.bgB.setTarget(bb);
+  activateSwatch(palette);
 }
 
 // ---------------------------------------------------------------------------
-// 8. Input Proxy (Pointer Raycasting)
+// 7. UI Generation
+// ---------------------------------------------------------------------------
+
+const surfaceNames = Object.keys(SURFACE_MAP);
+const vibeNames = Object.keys(VIBE_MAP);
+const paletteNames = Object.keys(PALETTE_MAP);
+
+// ── Surface Pills ──
+const surfaceContainer = document.getElementById('surface-pills');
+surfaceNames.forEach((name) => {
+  const pill = document.createElement('button');
+  pill.className = 'pill' + (name === activeSurface ? ' active' : '');
+  pill.dataset.surface = name;
+  pill.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+  pill.addEventListener('click', () => setSurface(name));
+  surfaceContainer.appendChild(pill);
+});
+
+// ── Vibe Pills ──
+const vibeContainer = document.getElementById('vibe-pills');
+vibeNames.forEach((name) => {
+  const pill = document.createElement('button');
+  pill.className = 'pill' + (name === activeVibe ? ' active' : '');
+  pill.dataset.vibe = name;
+  pill.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+  pill.addEventListener('click', () => setVibe(name));
+  vibeContainer.appendChild(pill);
+});
+
+// ── Palette Swatches ──
+const paletteContainer = document.getElementById('palette-swatches');
+paletteNames.forEach((name) => {
+  const swatch = document.createElement('button');
+  swatch.className = 'swatch' + (name === activePalette ? ' active' : '');
+  swatch.dataset.palette = name;
+  const p = PALETTE_MAP[name];
+  swatch.style.background = `linear-gradient(135deg, ${p.primary} 40%, ${p.accent} 100%)`;
+  swatch.setAttribute('aria-label', name);
+  const tip = document.createElement('span');
+  tip.className = 'swatch-tooltip';
+  tip.textContent = name;
+  swatch.appendChild(tip);
+  swatch.addEventListener('click', () => setPalette(name));
+  paletteContainer.appendChild(swatch);
+});
+
+// ── Slider Factory ──
+function createSlider(container, label, min, max, step, initial, onChange) {
+  const row = document.createElement('div');
+  row.className = 'slider-row';
+
+  const lbl = document.createElement('span');
+  lbl.className = 'slider-label';
+  lbl.textContent = label;
+
+  const track = document.createElement('div');
+  track.className = 'slider-track';
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = min; input.max = max; input.step = step; input.value = initial;
+  track.appendChild(input);
+
+  const decimals = step < 0.1 ? 2 : step < 1 ? 1 : 0;
+  const val = document.createElement('span');
+  val.className = 'slider-value';
+  val.textContent = Number(initial).toFixed(decimals);
+
+  input.addEventListener('input', () => {
+    const v = parseFloat(input.value);
+    val.textContent = v.toFixed(decimals);
+    onChange(v);
+  });
+
+  row.appendChild(lbl);
+  row.appendChild(track);
+  row.appendChild(val);
+  container.appendChild(row);
+  return { input, val };
+}
+
+// ── VFX Sliders ──
+const vfxContainer = document.getElementById('vfx-sliders');
+createSlider(vfxContainer, 'Grain',     0, 1, 0.01, 0, (v) => springs.grain.setTarget(v));
+createSlider(vfxContainer, 'Glow',      0, 2, 0.01, 0, (v) => springs.glow.setTarget(v));
+createSlider(vfxContainer, 'Chromatic',  0, 1, 0.01, 0, (v) => springs.chromatic.setTarget(v));
+createSlider(vfxContainer, 'Vignette',   0, 1, 0.01, 0, (v) => springs.vignette.setTarget(v));
+
+// ── Parameter Sliders ──
+const paramContainer = document.getElementById('param-sliders');
+createSlider(paramContainer, 'Speed',     0, 5, 0.01, 1.0,  (v) => springs.speed.setTarget(v));
+createSlider(paramContainer, 'Intensity', 0, 2, 0.01, 1.0,  (v) => springs.intensity.setTarget(v));
+createSlider(paramContainer, 'Angle',     0, 360, 1,   0,    (v) => springs.angle.setTarget(v * Math.PI / 180));
+
+// ── Helpers: activate pills/swatches ──
+function activateButton(type, name) {
+  const sel = type === 'surface' ? '#surface-pills .pill' : '#vibe-pills .pill';
+  document.querySelectorAll(sel).forEach(p => p.classList.remove('active'));
+  const t = document.querySelector(`${sel}[data-${type}="${name}"]`);
+  if (t) t.classList.add('active');
+}
+
+function activateSwatch(name) {
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+  const t = document.querySelector(`.swatch[data-palette="${name}"]`);
+  if (t) t.classList.add('active');
+}
+
+// ---------------------------------------------------------------------------
+// 8. Section Toggle
+// ---------------------------------------------------------------------------
+
+window.toggleSection = function(header) {
+  header.closest('.section').classList.toggle('closed');
+};
+
+// Panel close / toggle buttons
+document.getElementById('panel-close').addEventListener('click', () => {
+  document.getElementById('panel').classList.add('collapsed');
+});
+document.getElementById('panel-toggle').addEventListener('click', () => {
+  document.getElementById('panel').classList.remove('collapsed');
+});
+
+// ---------------------------------------------------------------------------
+// 9. Keyboard Shortcuts
+// ---------------------------------------------------------------------------
+
+const surfaceKeys = ['1','2','3','4','5','6','7','8'];
+const vibeKeys    = ['q','w','e','r','t','y','u','i','o'];
+
+document.addEventListener('keydown', (e) => {
+  const key = e.key.toLowerCase();
+  const sIdx = surfaceKeys.indexOf(key);
+  if (sIdx !== -1 && sIdx < surfaceNames.length) {
+    setSurface(surfaceNames[sIdx]);
+    return;
+  }
+  const vIdx = vibeKeys.indexOf(key);
+  if (vIdx !== -1 && vIdx < vibeNames.length) {
+    setVibe(vibeNames[vIdx]);
+    return;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 10. Input Proxy (Pointer Raycasting)
 // ---------------------------------------------------------------------------
 
 const raycaster = new THREE.Raycaster();
@@ -529,35 +1209,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
 }, { passive: true });
 
 // ---------------------------------------------------------------------------
-// 9. UI Controls
-// ---------------------------------------------------------------------------
-
-document.querySelectorAll('#controls button[data-vibe]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-vibe]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    setVibe(btn.dataset.vibe);
-  });
-});
-
-document.querySelectorAll('#controls button[data-surface]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-surface]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    setSurface(btn.dataset.surface);
-  });
-});
-
-document.querySelectorAll('#controls button[data-palette]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-palette]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    setPalette(btn.dataset.palette);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 10. Animation Loop
+// 11. Animation Loop
 // ---------------------------------------------------------------------------
 
 const clock = new THREE.Clock();
@@ -565,10 +1217,9 @@ let frameCount = 0;
 let fpsAccum = 0;
 const fpsEl = document.getElementById('fps');
 
-// Thermal guard: pause when hidden
+// Thermal guard: pause when tab hidden
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) clock.stop();
-  else clock.start();
+  if (document.hidden) clock.stop(); else clock.start();
 });
 
 function animate() {
@@ -580,19 +1231,32 @@ function animate() {
   // Step all springs
   for (const s of Object.values(springs)) s.step(dt);
 
-  // Write spring values to uniforms
-  uniforms.uTime.value = elapsed;
+  // Write spring values → uniforms
+  uniforms.uTime.value      = elapsed;
   uniforms.uFrequency.value = springs.frequency.value;
   uniforms.uAmplitude.value = springs.amplitude.value;
   uniforms.uNoiseScale.value = springs.noiseScale.value;
   uniforms.uNoiseSpeed.value = springs.noiseSpeed.value;
-  uniforms.uPrimaryColor.value.set(springs.primaryR.value, springs.primaryG.value, springs.primaryB.value);
-  uniforms.uAccentColor.value.set(springs.accentR.value, springs.accentG.value, springs.accentB.value);
+  uniforms.uIntensity.value = springs.intensity.value;
+  uniforms.uSpeed.value     = springs.speed.value;
+  uniforms.uAngle.value     = springs.angle.value;
+  uniforms.uGrain.value     = springs.grain.value;
+  uniforms.uGlow.value      = springs.glow.value;
+  uniforms.uChromatic.value = springs.chromatic.value;
+  uniforms.uVignette.value  = springs.vignette.value;
 
-  // Update clear color from spring
-  renderer.setClearColor(new THREE.Color(springs.bgR.value, springs.bgG.value, springs.bgB.value));
+  uniforms.uPrimaryColor.value.set(
+    springs.primaryR.value, springs.primaryG.value, springs.primaryB.value
+  );
+  uniforms.uAccentColor.value.set(
+    springs.accentR.value, springs.accentG.value, springs.accentB.value
+  );
 
-  // Raycast for pointer
+  renderer.setClearColor(
+    new THREE.Color(springs.bgR.value, springs.bgG.value, springs.bgB.value)
+  );
+
+  // Raycast for pointer interactivity
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObject(mesh);
   if (hits.length > 0) {
@@ -603,7 +1267,7 @@ function animate() {
   frameCount++;
   fpsAccum += dt;
   if (fpsAccum >= 0.5) {
-    fpsEl.textContent = Math.round(frameCount / fpsAccum) + ' FPS';
+    fpsEl.textContent = Math.round(frameCount / fpsAccum) + ' fps';
     frameCount = 0;
     fpsAccum = 0;
   }
@@ -615,7 +1279,7 @@ clock.start();
 animate();
 
 // ---------------------------------------------------------------------------
-// 11. Resize Handler
+// 12. Resize Handler
 // ---------------------------------------------------------------------------
 
 window.addEventListener('resize', () => {

@@ -50,13 +50,22 @@ export const BASE_SURFACE_MAP: Record<Surface, SurfaceDefinition> = {
   crystalline: { mode: 1, noiseScale: 2.5 },
   fluid:       { mode: 2, noiseScale: 0.6 },
   glitch:      { mode: 3, noiseScale: 3.0 },
+  organic:     { mode: 4, noiseScale: 0.8 },
+  terrain:     { mode: 5, noiseScale: 1.5 },
+  plasma:      { mode: 6, noiseScale: 2.0 },
+  wave:        { mode: 7, noiseScale: 0.5 },
 };
 
 export const BASE_VIBE_MAP: Record<Vibe, VibeDefinition> = {
-  stable:   { frequency: 0.1,  amplitude: 0.02, damping: 0.95, noiseSpeed: 0.05 },
-  calm:     { frequency: 0.5,  amplitude: 0.08, damping: 0.80, noiseSpeed: 0.15 },
-  agitated: { frequency: 2.5,  amplitude: 0.20, damping: 0.40, noiseSpeed: 0.60 },
-  chaotic:  { frequency: 5.0,  amplitude: 0.40, damping: 0.05, noiseSpeed: 1.50 },
+  stable:    { frequency: 0.1,  amplitude: 0.02, damping: 0.95, noiseSpeed: 0.05 },
+  calm:      { frequency: 0.5,  amplitude: 0.08, damping: 0.80, noiseSpeed: 0.15 },
+  agitated:  { frequency: 2.5,  amplitude: 0.20, damping: 0.40, noiseSpeed: 0.60 },
+  chaotic:   { frequency: 5.0,  amplitude: 0.40, damping: 0.05, noiseSpeed: 1.50 },
+  breathing: { frequency: 0.08, amplitude: 0.05, damping: 0.98, noiseSpeed: 0.03 },
+  pulse:     { frequency: 1.2,  amplitude: 0.15, damping: 0.60, noiseSpeed: 0.30 },
+  drift:     { frequency: 0.3,  amplitude: 0.06, damping: 0.85, noiseSpeed: 0.10 },
+  storm:     { frequency: 4.0,  amplitude: 0.35, damping: 0.10, noiseSpeed: 1.20 },
+  cinematic: { frequency: 0.2,  amplitude: 0.12, damping: 0.90, noiseSpeed: 0.08 },
 };
 
 export const BASE_REACTIVITY_MAP: Record<Reactivity, ReactivityDefinition> = {
@@ -99,6 +108,46 @@ export const BASE_PALETTE_MAP: Record<Palette, PaletteDefinition> = {
     primary:    hexToRGB('#a0a0b0'),
     accent:     hexToRGB('#6060a0'),
     background: hexToRGB('#08080c'),
+  },
+  ocean: {
+    primary:    hexToRGB('#0077b6'),
+    accent:     hexToRGB('#00b4d8'),
+    background: hexToRGB('#03071e'),
+  },
+  sunset: {
+    primary:    hexToRGB('#f77f00'),
+    accent:     hexToRGB('#d62828'),
+    background: hexToRGB('#0d0208'),
+  },
+  matrix: {
+    primary:    hexToRGB('#00ff41'),
+    accent:     hexToRGB('#008f11'),
+    background: hexToRGB('#000000'),
+  },
+  vapor: {
+    primary:    hexToRGB('#ff71ce'),
+    accent:     hexToRGB('#01cdfe'),
+    background: hexToRGB('#0a0012'),
+  },
+  gold: {
+    primary:    hexToRGB('#ffd700'),
+    accent:     hexToRGB('#daa520'),
+    background: hexToRGB('#0a0800'),
+  },
+  infrared: {
+    primary:    hexToRGB('#ff0055'),
+    accent:     hexToRGB('#ff6600'),
+    background: hexToRGB('#0a0005'),
+  },
+  aurora: {
+    primary:    hexToRGB('#43b581'),
+    accent:     hexToRGB('#7289da'),
+    background: hexToRGB('#020810'),
+  },
+  midnight: {
+    primary:    hexToRGB('#c0c0c8'),
+    accent:     hexToRGB('#4a6fa5'),
+    background: hexToRGB('#0a0e1a'),
   },
 };
 

@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMNTC — Cinema 4D Viewport</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ====================================================================
+       RESET & BASE
+       ==================================================================== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      background: #060608;
+      color: #c8c8cc;
+      font-family: 'JetBrains Mono', monospace;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ====================================================================
+       VIEWPORT CANVAS
+       ==================================================================== */
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    /* ====================================================================
+       HUD OVERLAY
+       ==================================================================== */
+    .hud {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .hud > * { pointer-events: none; }
+
+    /* ── Top Row ─────────────────────────────────── */
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .hud-label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .hud-title {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+    }
+    .hud-frame {
+      font-size: 9px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.18);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Stats (top-right) ───────────────────────── */
+    .hud-stats {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+    .hud-stats-line {
+      font-size: 9px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.22);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Material Inspector ───────────────────────── */
+    .inspector {
+      pointer-events: auto;
+      position: absolute;
+      top: 52px;
+      right: 16px;
+      background: rgba(12,12,16,0.88);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 6px;
+      padding: 0;
+      min-width: 200px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+    }
+    .inspector.collapsed .inspector-body { display: none; }
+    .inspector-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .inspector-header:hover { background: rgba(255,255,255,0.02); }
+    .inspector-title {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+    }
+    .inspector-chevron {
+      font-size: 8px;
+      color: rgba(255,255,255,0.25);
+      transition: transform 0.25s ease;
+    }
+    .inspector.collapsed .inspector-chevron { transform: rotate(-90deg); }
+    .inspector-body { padding: 8px 12px 10px; }
+    .inspector-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.02);
+    }
+    .inspector-row:last-child { border-bottom: none; }
+    .inspector-key {
+      font-size: 9px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .inspector-val {
+      font-size: 9px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.55);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 3px;
+      transition: background 0.2s ease, color 0.2s ease;
+      pointer-events: auto;
+    }
+    .inspector-val:hover {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.8);
+    }
+
+    /* ── Bottom Row ──────────────────────────────── */
+    .hud-bottom {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* ── Preset Bar ──────────────────────────────── */
+    .presets {
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .preset {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px 10px;
+      background: rgba(12,12,16,0.75);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      min-width: 110px;
+      user-select: none;
+    }
+    .preset:hover {
+      border-color: rgba(255,255,255,0.12);
+      background: rgba(20,20,28,0.85);
+      transform: translateY(-2px);
+    }
+    .preset.active {
+      border-color: rgba(255,255,255,0.18);
+      background: rgba(24,24,32,0.9);
+    }
+    .preset-swatch {
+      width: 80px;
+      height: 24px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+    .preset-name {
+      font-size: 8.5px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      transition: color 0.2s ease;
+    }
+    .preset:hover .preset-name,
+    .preset.active .preset-name { color: rgba(255,255,255,0.7); }
+
+    /* ── Navigation hints ────────────────────────── */
+    .hud-nav {
+      font-size: 8px;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.12);
+      text-transform: uppercase;
+    }
+
+    /* ── Viewport edge lines (C4D feel) ──────────── */
+    .viewport-edge {
+      position: fixed;
+      z-index: 5;
+      background: rgba(255,255,255,0.03);
+    }
+    .viewport-edge.top    { top: 0; left: 0; right: 0; height: 1px; }
+    .viewport-edge.bottom { bottom: 0; left: 0; right: 0; height: 1px; }
+    .viewport-edge.left   { top: 0; bottom: 0; left: 0; width: 1px; }
+    .viewport-edge.right  { top: 0; bottom: 0; right: 0; width: 1px; }
+
+    /* ── Crosshair (center viewport marker) ──────── */
+    .crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0.06;
+    }
+    .crosshair::before,
+    .crosshair::after {
+      content: '';
+      position: absolute;
+      background: #fff;
+    }
+    .crosshair::before {
+      width: 20px;
+      height: 1px;
+      top: 0;
+      left: -10px;
+    }
+    .crosshair::after {
+      width: 1px;
+      height: 20px;
+      top: -10px;
+      left: 0;
+    }
+
+    /* ====================================================================
+       RESPONSIVE
+       ==================================================================== */
+    @media (max-width: 640px) {
+      .presets { flex-wrap: wrap; justify-content: center; }
+      .preset { min-width: 90px; padding: 6px 10px 8px; }
+      .preset-swatch { width: 60px; height: 18px; }
+      .inspector { min-width: 170px; }
+      .hud-nav { font-size: 7px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Viewport edge decorations -->
+  <div class="viewport-edge top"></div>
+  <div class="viewport-edge bottom"></div>
+  <div class="viewport-edge left"></div>
+  <div class="viewport-edge right"></div>
+  <div class="crosshair"></div>
+
+  <!-- WebGL Canvas -->
+  <canvas id="scene"></canvas>
+
+  <!-- HUD Overlay -->
+  <div class="hud">
+    <!-- Top -->
+    <div class="hud-top">
+      <div class="hud-label">
+        <div class="hud-title">SMNTC Renderer</div>
+        <div class="hud-frame" id="frameCounter">Frame 0</div>
+      </div>
+      <div class="hud-stats">
+        <div class="hud-stats-line" id="resLine">1920 × 1080</div>
+        <div class="hud-stats-line" id="fpsLine">60.0 fps</div>
+      </div>
+    </div>
+
+    <!-- Material Inspector -->
+    <div class="inspector" id="inspector">
+      <div class="inspector-header" id="inspectorToggle">
+        <span class="inspector-title">Material</span>
+        <span class="inspector-chevron">▼</span>
+      </div>
+      <div class="inspector-body">
+        <div class="inspector-row">
+          <span class="inspector-key">Surface</span>
+          <span class="inspector-val" id="insSurface" data-cycle="surface">terrain</span>
+        </div>
+        <div class="inspector-row">
+          <span class="inspector-key">Vibe</span>
+          <span class="inspector-val" id="insVibe" data-cycle="vibe">cinematic</span>
+        </div>
+        <div class="inspector-row">
+          <span class="inspector-key">Palette</span>
+          <span class="inspector-val" id="insPalette" data-cycle="palette">gold</span>
+        </div>
+        <div class="inspector-row">
+          <span class="inspector-key">Intensity</span>
+          <span class="inspector-val" id="insIntensity">1.00</span>
+        </div>
+        <div class="inspector-row">
+          <span class="inspector-key">Speed</span>
+          <span class="inspector-val" id="insSpeed">0.50</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom -->
+    <div class="hud-bottom">
+      <div class="presets" id="presetBar"></div>
+      <div class="hud-nav">LMB: Orbit &nbsp;|&nbsp; Scroll: Zoom &nbsp;|&nbsp; RMB: Pan</div>
+    </div>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- THREE.JS + INLINE SMNTC SHADER ENGINE                              -->
+  <!-- ================================================================== -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    // ====================================================================
+    // PALETTE DEFINITIONS (normalized RGB, all 13)
+    // ====================================================================
+    const PALETTES = {
+      monochrome: { primary: [0.878,0.878,0.878], accent: [1,1,1],             bg: [0,0,0] },
+      ember:      { primary: [1,0.42,0.21],       accent: [1,0.67,0],           bg: [0.04,0.04,0.04] },
+      arctic:     { primary: [0.533,0.8,1],        accent: [1,1,1],             bg: [0.02,0.02,0.063] },
+      neon:       { primary: [0,1,0.533],          accent: [1,0,1],             bg: [0.04,0.04,0.04] },
+      phantom:    { primary: [0.627,0.627,0.69],   accent: [0.376,0.376,0.627], bg: [0.031,0.031,0.047] },
+      ocean:      { primary: [0,0.467,0.714],      accent: [0,0.706,0.847],     bg: [0.012,0.027,0.118] },
+      sunset:     { primary: [0.969,0.498,0],       accent: [0.839,0.157,0.157], bg: [0.051,0.008,0.031] },
+      matrix:     { primary: [0,1,0.255],          accent: [0,0.561,0.067],     bg: [0,0,0] },
+      vapor:      { primary: [1,0.443,0.808],      accent: [0.004,0.804,0.996], bg: [0.039,0,0.071] },
+      gold:       { primary: [1,0.843,0],          accent: [0.855,0.647,0.125], bg: [0.039,0.031,0] },
+      infrared:   { primary: [1,0,0.333],          accent: [1,0.4,0],           bg: [0.039,0,0.02] },
+      aurora:     { primary: [0.263,0.710,0.506],  accent: [0.447,0.537,0.855], bg: [0.008,0.031,0.063] },
+      midnight:   { primary: [0.753,0.753,0.784],  accent: [0.29,0.435,0.647],  bg: [0.039,0.055,0.102] },
+    };
+    const PALETTE_NAMES = Object.keys(PALETTES);
+
+    // ====================================================================
+    // SURFACE DEFINITIONS (all 8)
+    // ====================================================================
+    const SURFACES = {
+      topographic: { mode: 0, noiseScale: 1.0 },
+      crystalline: { mode: 1, noiseScale: 2.5 },
+      fluid:       { mode: 2, noiseScale: 0.6 },
+      glitch:      { mode: 3, noiseScale: 3.0 },
+      organic:     { mode: 4, noiseScale: 0.8 },
+      terrain:     { mode: 5, noiseScale: 1.5 },
+      plasma:      { mode: 6, noiseScale: 2.0 },
+      wave:        { mode: 7, noiseScale: 0.5 },
+    };
+    const SURFACE_NAMES = Object.keys(SURFACES);
+
+    // ====================================================================
+    // VIBE DEFINITIONS (all 9)
+    // ====================================================================
+    const VIBES = {
+      stable:    { frequency: 0.1,  amplitude: 0.02, noiseSpeed: 0.05 },
+      calm:      { frequency: 0.5,  amplitude: 0.08, noiseSpeed: 0.15 },
+      agitated:  { frequency: 2.5,  amplitude: 0.20, noiseSpeed: 0.60 },
+      chaotic:   { frequency: 5.0,  amplitude: 0.40, noiseSpeed: 1.50 },
+      breathing: { frequency: 0.08, amplitude: 0.05, noiseSpeed: 0.03 },
+      pulse:     { frequency: 1.2,  amplitude: 0.15, noiseSpeed: 0.30 },
+      drift:     { frequency: 0.3,  amplitude: 0.06, noiseSpeed: 0.10 },
+      storm:     { frequency: 4.0,  amplitude: 0.35, noiseSpeed: 1.20 },
+      cinematic: { frequency: 0.2,  amplitude: 0.12, noiseSpeed: 0.08 },
+    };
+    const VIBE_NAMES = Object.keys(VIBES);
+
+    // ====================================================================
+    // PRESET DEFINITIONS
+    // ====================================================================
+    const PRESETS = [
+      {
+        name: 'Gold Standard',
+        surface: 'terrain', palette: 'gold', vibe: 'cinematic',
+        vfx: { grain: 0.04, glow: 0.6, chromatic: 0.1, vignette: 0.5, blur: 0.15 },
+        speed: 0.5,
+      },
+      {
+        name: 'Neon Dreams',
+        surface: 'plasma', palette: 'neon', vibe: 'storm',
+        vfx: { grain: 0.06, glow: 0.8, chromatic: 0.2, vignette: 0.4, blur: 0.1 },
+        speed: 0.7,
+      },
+      {
+        name: 'Arctic Void',
+        surface: 'wave', palette: 'arctic', vibe: 'drift',
+        vfx: { grain: 0.03, glow: 0.5, chromatic: 0.08, vignette: 0.6, blur: 0.2 },
+        speed: 0.4,
+      },
+      {
+        name: 'Infrared Scan',
+        surface: 'organic', palette: 'infrared', vibe: 'pulse',
+        vfx: { grain: 0.05, glow: 0.7, chromatic: 0.15, vignette: 0.45, blur: 0.12 },
+        speed: 0.6,
+      },
+    ];
+
+    // ====================================================================
+    // SPRING PHYSICS
+    // ====================================================================
+    class Spring {
+      constructor(value, stiffness = 60, damping = 10) {
+        this.value = value;
+        this.target = value;
+        this.velocity = 0;
+        this.stiffness = stiffness;
+        this.damping = damping;
+      }
+      set(target) { this.target = target; }
+      tick(dt) {
+        const safeDt = Math.min(dt, 0.064);
+        const dx = this.target - this.value;
+        const sf = dx * this.stiffness;
+        const df = -this.velocity * this.damping;
+        this.velocity += (sf + df) * safeDt;
+        this.value += this.velocity * safeDt;
+        if (Math.abs(this.velocity) < 0.0003 && Math.abs(dx) < 0.0003) {
+          this.value = this.target;
+          this.velocity = 0;
+        }
+        return this.value;
+      }
+    }
+
+    // ====================================================================
+    // STATE
+    // ====================================================================
+    let currentSurface = 'terrain';
+    let currentVibe    = 'cinematic';
+    let currentPalette = 'gold';
+    let activePreset   = 0;
+
+    const springs = {
+      frequency:   new Spring(VIBES.cinematic.frequency),
+      amplitude:   new Spring(VIBES.cinematic.amplitude),
+      noiseScale:  new Spring(SURFACES.terrain.noiseScale),
+      noiseSpeed:  new Spring(VIBES.cinematic.noiseSpeed),
+      surfaceMode: new Spring(SURFACES.terrain.mode, 100, 13),
+      primaryR:    new Spring(PALETTES.gold.primary[0]),
+      primaryG:    new Spring(PALETTES.gold.primary[1]),
+      primaryB:    new Spring(PALETTES.gold.primary[2]),
+      accentR:     new Spring(PALETTES.gold.accent[0]),
+      accentG:     new Spring(PALETTES.gold.accent[1]),
+      accentB:     new Spring(PALETTES.gold.accent[2]),
+      bgR:         new Spring(PALETTES.gold.bg[0]),
+      bgG:         new Spring(PALETTES.gold.bg[1]),
+      bgB:         new Spring(PALETTES.gold.bg[2]),
+      grain:       new Spring(0.04),
+      glow:        new Spring(0.6),
+      chromatic:   new Spring(0.1),
+      vignette:    new Spring(0.5),
+      blur:        new Spring(0.15),
+      speed:       new Spring(0.5),
+      intensity:   new Spring(1.0),
+      wireframe:   new Spring(0.0),
+    };
+
+    // ====================================================================
+    // CAMERA ORBIT STATE
+    // ====================================================================
+    let orbitTheta   = 0;         // current horizontal angle (radians)
+    let orbitPhi     = Math.PI / 6; // ~30 degrees down
+    let orbitRadius  = 5.5;
+    let autoRotate   = true;
+    let isDragging   = false;
+    let isPanning    = false;
+    let dragStart    = { x: 0, y: 0 };
+    let dragTheta    = 0;
+    let dragPhi      = 0;
+    let panOffset    = { x: 0, y: 0 };
+    let panStart     = { x: 0, y: 0 };
+    let panBase      = { x: 0, y: 0 };
+    let autoResumeTimer = null;
+
+    // ====================================================================
+    // VERTEX SHADER (all 8 surfaces)
+    // ====================================================================
+    const vertexShader = /* glsl */ `
+precision highp float;
+
+uniform float uTime;
+uniform float uSurfaceMode;
+uniform float uFrequency;
+uniform float uAmplitude;
+uniform float uNoiseScale;
+uniform float uNoiseSpeed;
+uniform float uIntensity;
+uniform float uSpeed;
+
+varying vec3  vNormal;
+varying vec3  vPosition;
+varying float vDisplacement;
+varying vec2  vUv;
+
+// ── Simplex 3D Noise ──
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 permute(vec4 x){return mod289(((x*34.0)+10.0)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+
+float snoise(vec3 v){
+  const vec2 C=vec2(1.0/6.0,1.0/3.0);
+  const vec4 D=vec4(0.0,0.5,1.0,2.0);
+  vec3 i=floor(v+dot(v,C.yyy));
+  vec3 x0=v-i+dot(i,C.xxx);
+  vec3 g=step(x0.yzx,x0.xyz);
+  vec3 l=1.0-g;
+  vec3 i1=min(g.xyz,l.zxy);
+  vec3 i2=max(g.xyz,l.zxy);
+  vec3 x1=x0-i1+C.xxx;
+  vec3 x2=x0-i2+C.yyy;
+  vec3 x3=x0-D.yyy;
+  i=mod289(i);
+  vec4 p=permute(permute(permute(
+    i.z+vec4(0.0,i1.z,i2.z,1.0))
+    +i.y+vec4(0.0,i1.y,i2.y,1.0))
+    +i.x+vec4(0.0,i1.x,i2.x,1.0));
+  float n_=0.142857142857;
+  vec3 ns=n_*D.wyz-D.xzx;
+  vec4 j=p-49.0*floor(p*ns.z*ns.z);
+  vec4 x_=floor(j*ns.z);
+  vec4 y_=floor(j-7.0*x_);
+  vec4 xv=x_*ns.x+ns.yyyy;
+  vec4 yv=y_*ns.x+ns.yyyy;
+  vec4 h=1.0-abs(xv)-abs(yv);
+  vec4 b0=vec4(xv.xy,yv.xy);
+  vec4 b1=vec4(xv.zw,yv.zw);
+  vec4 s0=floor(b0)*2.0+1.0;
+  vec4 s1=floor(b1)*2.0+1.0;
+  vec4 sh=-step(h,vec4(0.0));
+  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;
+  vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+  vec3 p0=vec3(a0.xy,h.x);
+  vec3 p1=vec3(a0.zw,h.y);
+  vec3 p2=vec3(a1.xy,h.z);
+  vec3 p3=vec3(a1.zw,h.w);
+  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+  p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+  vec4 m=max(0.5-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);
+  m=m*m;
+  return 105.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+}
+
+// ── Voronoi ──
+float voronoi(vec3 p){
+  vec3 i_st=floor(p);vec3 f_st=fract(p);
+  float md=1.0;
+  for(int z=-1;z<=1;z++) for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+    vec3 nb=vec3(float(x),float(y),float(z));
+    vec3 pt=vec3(
+      fract(sin(dot(i_st+nb,vec3(12.9898,78.233,45.164)))*43758.5453),
+      fract(sin(dot(i_st+nb,vec3(93.989,67.345,12.456)))*28461.2534),
+      fract(sin(dot(i_st+nb,vec3(43.332,93.532,65.123)))*63728.1927));
+    md=min(md,length(nb+pt-f_st));
+  }
+  return md;
+}
+
+// ── 8 Surface Displacement Functions ──
+float topographicDisp(vec3 p,float t){
+  float w1=sin(p.x*uFrequency+t*0.8)*0.5;
+  float w2=sin(p.y*uFrequency*1.3+t*0.6)*0.3;
+  float w3=cos(p.x*uFrequency*0.7+p.y*uFrequency*0.9+t*1.1)*0.2;
+  return(w1+w2+w3)*uAmplitude*uIntensity;
+}
+float crystallineDisp(vec3 p,float t){
+  float v=voronoi(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  return floor(v*8.0)/8.0*uAmplitude*uIntensity;
+}
+float fluidDisp(vec3 p,float t){
+  float n1=snoise(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float n2=snoise(p*uNoiseScale*2.0+vec3(t*uNoiseSpeed*0.5));
+  return(n1*0.6+n2*0.4)*uAmplitude*uIntensity;
+}
+float glitchDisp(vec3 p,float t){
+  float base=snoise(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float q=floor(base*4.0+0.5)/4.0;
+  float burst=step(0.92,fract(sin(dot(p.xy+t,vec2(12.9898,78.233)))*43758.5453));
+  return(q+burst*0.3)*uAmplitude*uIntensity;
+}
+float organicDisp(vec3 p,float t){
+  float w1=snoise(p*uNoiseScale*0.5+vec3(t*uNoiseSpeed*0.3));
+  float w2=snoise(p*uNoiseScale*0.5+vec3(0.0,t*uNoiseSpeed*0.4,0.0));
+  vec3 wp=p+vec3(w1,w2,0.0)*0.5;
+  float n=snoise(wp*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float n2=snoise(wp*uNoiseScale*1.5+vec3(t*uNoiseSpeed*0.7));
+  return(n*0.7+n2*0.3)*uAmplitude*uIntensity;
+}
+float terrainDisp(vec3 p,float t){
+  float total=0.0,amp=1.0,freq=1.0,weight=1.0;
+  for(int i=0;i<5;i++){
+    float n=abs(snoise(p*uNoiseScale*freq+vec3(0.0,0.0,t*uNoiseSpeed*0.2)));
+    n=1.0-n;n*=n;n*=weight;
+    weight=clamp(n*2.0,0.0,1.0);
+    total+=n*amp;freq*=2.1;amp*=0.5;
+  }
+  return total*uAmplitude*uIntensity*0.5;
+}
+float plasmaDisp(vec3 p,float t){
+  float n1=sin(p.x*uNoiseScale*1.5+t*uNoiseSpeed*2.0);
+  float n2=sin(p.y*uNoiseScale*1.5+t*uNoiseSpeed*1.5);
+  float n3=snoise(p*uNoiseScale+vec3(t*uNoiseSpeed));
+  float n4=sin((p.x+p.y)*uNoiseScale+t*uNoiseSpeed*3.0)*0.5;
+  return(n1+n2+n3+n4)*0.25*uAmplitude*uIntensity;
+}
+float waveDisp(vec3 p,float t){
+  float w=0.0;
+  w+=sin(p.x*uFrequency*2.0+t*1.5)*0.4;
+  w+=sin(p.x*uFrequency*0.8-p.y*uFrequency*0.5+t*1.2)*0.3;
+  w+=sin(p.y*uFrequency*1.5+t*0.9)*0.2;
+  w+=sin((p.x+p.y)*uFrequency*0.6+t*2.0)*0.1;
+  w+=snoise(p*uNoiseScale*0.5+vec3(0.0,0.0,t*uNoiseSpeed*0.5))*0.15;
+  return w*uAmplitude*uIntensity;
+}
+
+float getDisplacement(vec3 pos,float t){
+  if(uSurfaceMode<0.5) return topographicDisp(pos,t);
+  if(uSurfaceMode<1.5) return crystallineDisp(pos,t);
+  if(uSurfaceMode<2.5) return fluidDisp(pos,t);
+  if(uSurfaceMode<3.5) return glitchDisp(pos,t);
+  if(uSurfaceMode<4.5) return organicDisp(pos,t);
+  if(uSurfaceMode<5.5) return terrainDisp(pos,t);
+  if(uSurfaceMode<6.5) return plasmaDisp(pos,t);
+  return waveDisp(pos,t);
+}
+
+// ── Finite-Difference Normal ──
+vec3 computeNormal(vec3 pos,vec3 norm,float t){
+  float eps=0.01;
+  float dX=getDisplacement(pos+vec3(eps,0,0),t)-getDisplacement(pos-vec3(eps,0,0),t);
+  float dZ=getDisplacement(pos+vec3(0,0,eps),t)-getDisplacement(pos-vec3(0,0,eps),t);
+  return normalize(norm+vec3(-dX/(2.0*eps),1.0,-dZ/(2.0*eps)));
+}
+
+void main(){
+  float t=mod(uTime*uSpeed,6283.1853);
+  vec3 pos=position;
+  float disp=getDisplacement(pos,t);
+  vec3 displaced=pos+normal*disp;
+  vNormal=normalize(normalMatrix*computeNormal(pos,normal,t));
+  vPosition=(modelViewMatrix*vec4(displaced,1.0)).xyz;
+  vDisplacement=disp;
+  vUv=uv;
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(displaced,1.0);
+}
+`;
+
+    // ====================================================================
+    // FRAGMENT SHADER (VFX: grain, glow, chromatic, vignette, blur)
+    // ====================================================================
+    const fragmentShader = /* glsl */ `
+precision highp float;
+
+uniform vec3  uPrimaryColor;
+uniform vec3  uAccentColor;
+uniform vec3  uBackgroundColor;
+uniform float uContourLines;
+uniform float uSurfaceMode;
+uniform float uWireframe;
+uniform float uWireframeWidth;
+uniform float uIntensity;
+uniform float uTime;
+uniform float uGrain;
+uniform float uGlow;
+uniform float uChromatic;
+uniform float uVignette;
+uniform float uBlur;
+
+varying vec3  vNormal;
+varying vec3  vPosition;
+varying float vDisplacement;
+varying vec2  vUv;
+
+// Wireframe edge
+float edgeFactor(){
+  vec2 grid=abs(fract(vUv*uContourLines-0.5)-0.5);
+  vec2 dG=fwidth(vUv*uContourLines);
+  vec2 a2=smoothstep(vec2(0.0),dG*uWireframeWidth*1.5,grid);
+  return min(a2.x,a2.y);
+}
+
+// Contour lines
+float contourFactor(){
+  float sd=vDisplacement*uContourLines*10.0;
+  float line=abs(fract(sd)-0.5);
+  return smoothstep(0.0,fwidth(sd)*1.5,line);
+}
+
+// Enhanced cinematic lighting — 3-point w/ rim
+vec3 lighting(vec3 bc){
+  // Key light — warm, high angle
+  vec3 keyDir=normalize(vec3(0.4,1.0,0.6));
+  vec3 vd=normalize(-vPosition);
+  vec3 n=normalize(vNormal);
+  float ambient=0.08;
+  float diff=max(dot(n,keyDir),0.0);
+  vec3 halfD=normalize(keyDir+vd);
+  float spec=pow(max(dot(n,halfD),0.0),96.0)*0.45;
+  // Rim light — back edge glow
+  float rim=pow(1.0-max(dot(vd,n),0.0),4.0)*0.35;
+  // Fill light — cool, from below-left
+  vec3 fillDir=normalize(vec3(-0.5,0.3,-0.6));
+  float fill=max(dot(n,fillDir),0.0)*0.12;
+  // Back light — subtle
+  vec3 backDir=normalize(vec3(0.0,-0.3,-1.0));
+  float back=max(dot(n,backDir),0.0)*0.06;
+  return bc*(ambient+diff*0.75+fill+back)+vec3(spec)+bc*rim;
+}
+
+// Film grain
+float filmGrain(vec2 uv,float t){
+  float n1=fract(sin(dot(uv*1000.0+t*100.0,vec2(12.9898,78.233)))*43758.5453);
+  float n2=fract(sin(dot(uv*800.0-t*50.0,vec2(63.7264,10.873)))*28462.6453);
+  return(n1*0.5+n2*0.5)*2.0-1.0;
+}
+
+// Vignette
+float vignetteEffect(vec2 uv){
+  vec2 c=uv-0.5;
+  return 1.0-smoothstep(0.25,0.9,length(c));
+}
+
+void main(){
+  float bf=smoothstep(-0.15,0.15,vDisplacement)*uIntensity;
+  vec3 baseColor=mix(uPrimaryColor,uAccentColor,bf);
+  vec4 fc;
+
+  if(uWireframe>0.5){
+    float contour=contourFactor();
+    float edge=edgeFactor();
+    float lf=min(contour,edge);
+    vec3 lc=lighting(baseColor);
+    if(uGlow>0.01){
+      float gf=(1.0-lf)*uGlow;
+      lc+=baseColor*gf*0.5+uAccentColor*gf*0.3;
+    }
+    float alpha=1.0-lf;
+    if(alpha<0.05) discard;
+    fc=vec4(lc,alpha);
+  } else {
+    vec3 lc=lighting(baseColor);
+    if(uGlow>0.01){
+      float br=dot(lc,vec3(0.299,0.587,0.114));
+      lc+=lc*br*uGlow*0.5;
+    }
+    fc=vec4(lc,1.0);
+  }
+
+  // Chromatic aberration
+  if(uChromatic>0.001){
+    vec2 center=vUv-0.5;
+    float dist=length(center);
+    float ao=dist*uChromatic*0.02;
+    float rS=smoothstep(-0.15,0.15,vDisplacement+ao)*uIntensity;
+    float bS=smoothstep(-0.15,0.15,vDisplacement-ao)*uIntensity;
+    vec3 rC=mix(uPrimaryColor,uAccentColor,rS);
+    vec3 bC=mix(uPrimaryColor,uAccentColor,bS);
+    fc.r=mix(fc.r,rC.r*1.1,uChromatic*0.5);
+    fc.b=mix(fc.b,bC.b*1.1,uChromatic*0.5);
+  }
+
+  // Film grain overlay
+  if(uGrain>0.001){
+    fc.rgb+=filmGrain(vUv,uTime)*uGrain*0.15;
+  }
+
+  // Vignette
+  if(uVignette>0.001){
+    fc.rgb*=mix(1.0,vignetteEffect(vUv),uVignette);
+  }
+
+  // Depth blur simulation
+  if(uBlur>0.001){
+    float depth=length(vPosition);
+    float blurF=smoothstep(1.0,6.0,depth)*uBlur;
+    vec3 blurred=mix(fc.rgb,vec3(dot(fc.rgb,vec3(0.299,0.587,0.114))),blurF*0.3);
+    fc.rgb=mix(fc.rgb,blurred,blurF);
+  }
+
+  gl_FragColor=fc;
+}
+`;
+
+    // ====================================================================
+    // RENDERER SETUP
+    // ====================================================================
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x060608, 1);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+
+    // High-resolution plane tilted for dramatic perspective
+    const geometry = new THREE.PlaneGeometry(6, 6, 256, 256);
+
+    const uniforms = {
+      uTime:            { value: 0 },
+      uSurfaceMode:     { value: SURFACES.terrain.mode },
+      uFrequency:       { value: VIBES.cinematic.frequency },
+      uAmplitude:       { value: VIBES.cinematic.amplitude },
+      uNoiseScale:      { value: SURFACES.terrain.noiseScale },
+      uNoiseSpeed:      { value: VIBES.cinematic.noiseSpeed },
+      uIntensity:       { value: 1.0 },
+      uSpeed:           { value: 0.5 },
+      uContourLines:    { value: 16 },
+      uPrimaryColor:    { value: new THREE.Vector3(...PALETTES.gold.primary) },
+      uAccentColor:     { value: new THREE.Vector3(...PALETTES.gold.accent) },
+      uBackgroundColor: { value: new THREE.Vector3(...PALETTES.gold.bg) },
+      uWireframe:       { value: 0.0 },
+      uWireframeWidth:  { value: 1.0 },
+      uGrain:           { value: 0.04 },
+      uGlow:            { value: 0.6 },
+      uChromatic:       { value: 0.1 },
+      uVignette:        { value: 0.5 },
+      uBlur:            { value: 0.15 },
+    };
+
+    const material = new THREE.ShaderMaterial({
+      vertexShader,
+      fragmentShader,
+      uniforms,
+      transparent: false,
+      side: THREE.DoubleSide,
+      extensions: { derivatives: true },
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    // Tilt the plane ~60deg from horizontal for dramatic perspective
+    mesh.rotation.x = -Math.PI * 0.38;
+    mesh.rotation.z = Math.PI * 0.05;
+    scene.add(mesh);
+
+    // ====================================================================
+    // CAMERA ORBIT CONTROLS (custom, lightweight)
+    // ====================================================================
+    function updateCamera() {
+      const x = orbitRadius * Math.sin(orbitTheta) * Math.cos(orbitPhi);
+      const y = orbitRadius * Math.sin(orbitPhi);
+      const z = orbitRadius * Math.cos(orbitTheta) * Math.cos(orbitPhi);
+      camera.position.set(x + panOffset.x, y + panOffset.y, z);
+      camera.lookAt(panOffset.x, panOffset.y, 0);
+    }
+
+    // Mouse / Touch handlers
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        // Left mouse — orbit
+        isDragging = true;
+        dragStart = { x: e.clientX, y: e.clientY };
+        dragTheta = orbitTheta;
+        dragPhi = orbitPhi;
+        autoRotate = false;
+        clearTimeout(autoResumeTimer);
+      } else if (e.button === 2) {
+        // Right mouse — pan
+        isPanning = true;
+        panStart = { x: e.clientX, y: e.clientY };
+        panBase = { ...panOffset };
+        e.preventDefault();
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const dx = (e.clientX - dragStart.x) * 0.005;
+        const dy = (e.clientY - dragStart.y) * 0.005;
+        orbitTheta = dragTheta - dx;
+        orbitPhi = Math.max(0.05, Math.min(Math.PI * 0.45, dragPhi + dy));
+      }
+      if (isPanning) {
+        const dx = (e.clientX - panStart.x) * 0.005;
+        const dy = (e.clientY - panStart.y) * 0.005;
+        panOffset.x = panBase.x - dx;
+        panOffset.y = panBase.y + dy;
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        // Resume auto-rotate after 3s of no interaction
+        autoResumeTimer = setTimeout(() => { autoRotate = true; }, 3000);
+      }
+      isPanning = false;
+    });
+
+    // Touch support
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        isDragging = true;
+        dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        dragTheta = orbitTheta;
+        dragPhi = orbitPhi;
+        autoRotate = false;
+        clearTimeout(autoResumeTimer);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (isDragging && e.touches.length === 1) {
+        const dx = (e.touches[0].clientX - dragStart.x) * 0.005;
+        const dy = (e.touches[0].clientY - dragStart.y) * 0.005;
+        orbitTheta = dragTheta - dx;
+        orbitPhi = Math.max(0.05, Math.min(Math.PI * 0.45, dragPhi + dy));
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      if (isDragging) {
+        isDragging = false;
+        autoResumeTimer = setTimeout(() => { autoRotate = true; }, 3000);
+      }
+    });
+
+    // Scroll — zoom
+    canvas.addEventListener('wheel', (e) => {
+      orbitRadius = Math.max(2.5, Math.min(12, orbitRadius + e.deltaY * 0.005));
+      e.preventDefault();
+    }, { passive: false });
+
+    // ====================================================================
+    // RESIZE
+    // ====================================================================
+    function resize() {
+      const w = innerWidth, h = innerHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      document.getElementById('resLine').textContent =
+        `${Math.round(w * devicePixelRatio)} \u00d7 ${Math.round(h * devicePixelRatio)}`;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ====================================================================
+    // ANIMATION LOOP
+    // ====================================================================
+    const clock = new THREE.Clock();
+    const clearColor = new THREE.Color();
+    let frameCount = 0;
+    let fpsAccum = 0;
+    let fpsCount = 0;
+    let lastFps = 60;
+
+    const frameEl = document.getElementById('frameCounter');
+    const fpsEl   = document.getElementById('fpsLine');
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const elapsed = clock.getElapsedTime();
+      frameCount++;
+
+      // FPS counter
+      fpsAccum += dt;
+      fpsCount++;
+      if (fpsAccum >= 0.5) {
+        lastFps = fpsCount / fpsAccum;
+        fpsAccum = 0;
+        fpsCount = 0;
+        fpsEl.textContent = lastFps.toFixed(1) + ' fps';
+      }
+      frameEl.textContent = 'Frame ' + frameCount;
+
+      // Auto-rotate (smooth sinusoidal)
+      if (autoRotate) {
+        orbitTheta += dt * 0.15; // slow orbit
+      }
+
+      updateCamera();
+
+      // Tick all springs
+      for (const s of Object.values(springs)) s.tick(dt);
+
+      // Push spring values into uniforms
+      uniforms.uTime.value         = elapsed;
+      uniforms.uSurfaceMode.value  = springs.surfaceMode.value;
+      uniforms.uFrequency.value    = springs.frequency.value;
+      uniforms.uAmplitude.value    = springs.amplitude.value;
+      uniforms.uNoiseScale.value   = springs.noiseScale.value;
+      uniforms.uNoiseSpeed.value   = springs.noiseSpeed.value;
+      uniforms.uSpeed.value        = springs.speed.value;
+      uniforms.uIntensity.value    = springs.intensity.value;
+      uniforms.uGrain.value        = springs.grain.value;
+      uniforms.uGlow.value         = springs.glow.value;
+      uniforms.uChromatic.value    = springs.chromatic.value;
+      uniforms.uVignette.value     = springs.vignette.value;
+      uniforms.uBlur.value         = springs.blur.value;
+      uniforms.uWireframe.value    = springs.wireframe.value;
+
+      // Palette colors
+      uniforms.uPrimaryColor.value.set(
+        springs.primaryR.value, springs.primaryG.value, springs.primaryB.value
+      );
+      uniforms.uAccentColor.value.set(
+        springs.accentR.value, springs.accentG.value, springs.accentB.value
+      );
+      uniforms.uBackgroundColor.value.set(
+        springs.bgR.value, springs.bgG.value, springs.bgB.value
+      );
+
+      // Sync clear color with palette bg
+      clearColor.setRGB(
+        Math.max(springs.bgR.value, 0.023),
+        Math.max(springs.bgG.value, 0.023),
+        Math.max(springs.bgB.value, 0.031)
+      );
+      renderer.setClearColor(clearColor, 1);
+
+      renderer.render(scene, camera);
+    }
+
+    clock.start();
+    animate();
+
+    // ====================================================================
+    // STATE CHANGERS
+    // ====================================================================
+    function applySurface(name) {
+      currentSurface = name;
+      const s = SURFACES[name];
+      if (!s) return;
+      springs.surfaceMode.set(s.mode);
+      springs.noiseScale.set(s.noiseScale);
+      document.getElementById('insSurface').textContent = name;
+    }
+
+    function applyVibe(name) {
+      currentVibe = name;
+      const v = VIBES[name];
+      if (!v) return;
+      springs.frequency.set(v.frequency);
+      springs.amplitude.set(v.amplitude);
+      springs.noiseSpeed.set(v.noiseSpeed);
+      document.getElementById('insVibe').textContent = name;
+    }
+
+    function applyPalette(name) {
+      currentPalette = name;
+      const p = PALETTES[name];
+      if (!p) return;
+      springs.primaryR.set(p.primary[0]);
+      springs.primaryG.set(p.primary[1]);
+      springs.primaryB.set(p.primary[2]);
+      springs.accentR.set(p.accent[0]);
+      springs.accentG.set(p.accent[1]);
+      springs.accentB.set(p.accent[2]);
+      springs.bgR.set(p.bg[0]);
+      springs.bgG.set(p.bg[1]);
+      springs.bgB.set(p.bg[2]);
+      document.getElementById('insPalette').textContent = name;
+    }
+
+    function applyVFX(vfx) {
+      springs.grain.set(vfx.grain);
+      springs.glow.set(vfx.glow);
+      springs.chromatic.set(vfx.chromatic);
+      springs.vignette.set(vfx.vignette);
+      springs.blur.set(vfx.blur);
+    }
+
+    function applyPreset(index) {
+      const p = PRESETS[index];
+      if (!p) return;
+      activePreset = index;
+      applySurface(p.surface);
+      applyPalette(p.palette);
+      applyVibe(p.vibe);
+      applyVFX(p.vfx);
+      springs.speed.set(p.speed);
+      springs.wireframe.set(0);
+      document.getElementById('insSpeed').textContent = p.speed.toFixed(2);
+      // Update active preset button
+      document.querySelectorAll('.preset').forEach((el, i) => {
+        el.classList.toggle('active', i === index);
+      });
+    }
+
+    // ====================================================================
+    // UI: PRESET BAR
+    // ====================================================================
+    const presetBar = document.getElementById('presetBar');
+    PRESETS.forEach((p, i) => {
+      const pal = PALETTES[p.palette];
+      const toCSS = (c) => `rgb(${Math.round(c[0]*255)},${Math.round(c[1]*255)},${Math.round(c[2]*255)})`;
+      const grad = `linear-gradient(135deg, ${toCSS(pal.primary)} 0%, ${toCSS(pal.accent)} 60%, ${toCSS(pal.bg)} 100%)`;
+
+      const el = document.createElement('div');
+      el.className = 'preset' + (i === 0 ? ' active' : '');
+      el.innerHTML = `
+        <div class="preset-swatch" style="background:${grad}"></div>
+        <div class="preset-name">${p.name}</div>
+      `;
+      el.addEventListener('click', () => applyPreset(i));
+      presetBar.appendChild(el);
+    });
+
+    // ====================================================================
+    // UI: INSPECTOR TOGGLE
+    // ====================================================================
+    document.getElementById('inspectorToggle').addEventListener('click', () => {
+      document.getElementById('inspector').classList.toggle('collapsed');
+    });
+
+    // ====================================================================
+    // UI: INSPECTOR CYCLING
+    // ====================================================================
+    document.getElementById('insSurface').addEventListener('click', () => {
+      const idx = (SURFACE_NAMES.indexOf(currentSurface) + 1) % SURFACE_NAMES.length;
+      applySurface(SURFACE_NAMES[idx]);
+    });
+    document.getElementById('insVibe').addEventListener('click', () => {
+      const idx = (VIBE_NAMES.indexOf(currentVibe) + 1) % VIBE_NAMES.length;
+      applyVibe(VIBE_NAMES[idx]);
+    });
+    document.getElementById('insPalette').addEventListener('click', () => {
+      const idx = (PALETTE_NAMES.indexOf(currentPalette) + 1) % PALETTE_NAMES.length;
+      applyPalette(PALETTE_NAMES[idx]);
+    });
+
+    // ====================================================================
+    // THERMAL GUARD
+    // ====================================================================
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) clock.stop(); else clock.start();
+    });
+
+  </script>
+</body>
+</html>

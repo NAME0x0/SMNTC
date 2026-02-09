@@ -1,4 +1,4 @@
-# SMNTC Technical Specification (v1.0.0)
+# SMNTC Technical Specification (v1.2.0)
 
 **Subject:** Semantic Engine for Motion, Animation, and Numerical Topographic Interactivity & Composition.
 
@@ -15,24 +15,24 @@ SMNTC operates as a three-stage compiler that converts linguistic "Vibes" into h
 3. **The Kernel (Output):** Injects a procedurally generated Uber-Shader into the GPU pipeline.
 
 ```
-┌─────────────────────┐
+┌──────────────────────┐
 │   Semantic Tokens    │   Developer / LLM Input
 │  { vibe: "agitated"  │   (JSON / React Props)
 │    surface: "fluid" }│
-└─────────┬───────────┘
+└─────────┬────────────┘
           │
           ▼
 ┌─────────────────────┐
-│  SMNTC-Translate     │   Deterministic Lookup
-│  Token → Constants   │   "agitated" → ω=2.5, A=0.2
+│  SMNTC-Translate    │   Deterministic Lookup
+│  Token → Constants  │   "agitated" → ω=2.5, A=0.2
 └─────────┬───────────┘
           │
           ▼
-┌─────────────────────┐
+┌──────────────────────┐
 │  SMNTC-Kernel        │   GPU Uber-Shader
 │  Vertex Displacement │   + Spring Physics
 │  + Normal Recalc     │   + Auto-Scaler
-└─────────────────────┘
+└──────────────────────┘
 ```
 
 ---
@@ -51,6 +51,10 @@ Defines the visual structure of the mesh.
 | `crystalline`  | Sharp, faceted vertex clustering.                                   | Voronoi            |
 | `fluid`        | Organic, continuous surface displacement.                           | Simplex / Perlin   |
 | `glitch`       | Step-function displacement with randomized UV-shifting.             | Quantized Random   |
+| `organic`      | Domain-warped simplex — slow fractal warping.                       | Warp + Simplex     |
+| `terrain`      | Ridged multi-fractal — mountain-like ridgelines.                    | Ridged FBM (5 oct) |
+| `plasma`       | Animated FBM — swirling energy fields.                              | Animated FBM + sin |
+| `wave`         | Multi-directional Gerstner — ocean wave simulation.                 | Gerstner (3-wave)  |
 
 ### B. Kinetic Vibe (`vibe`)
 
@@ -62,6 +66,11 @@ Defines the motion physics and frequency.
 | `calm`     | ≈ 0.5                 | [0.05, 0.10]       | 0.80      | Slow, rhythmic oscillation      |
 | `agitated` | ≈ 2.5                 | [0.10, 0.30]       | 0.40      | High-frequency, erratic shifts  |
 | `chaotic`  | ≈ 5.0+                | [0.20, 0.50]       | 0.05      | Stochastic vertex bursts        |
+| `breathing`| ≈ 0.08                | [0.03, 0.07]       | 0.98      | Ultra-slow inhale/exhale pulse  |
+| `pulse`    | ≈ 1.2                 | [0.10, 0.20]       | 0.60      | Rhythmic beating cadence        |
+| `drift`    | ≈ 0.3                 | [0.04, 0.08]       | 0.85      | Gentle lateral wind-like drift  |
+| `storm`    | ≈ 4.0                 | [0.25, 0.45]       | 0.10      | Intense turbulence              |
+| `cinematic`| ≈ 0.2                 | [0.08, 0.16]       | 0.90      | Slow cinematic sweep            |
 
 ### C. Interaction Model (`reactivity`)
 
@@ -96,6 +105,27 @@ Defines the color scheme of the rendered surface.
 | `arctic`       | `#88ccff`    | `#ffffff`    | `#050510`    |
 | `neon`         | `#00ff88`    | `#ff00ff`    | `#0a0a0a`    |
 | `phantom`      | `#a0a0b0`    | `#6060a0`    | `#08080c`    |
+| `ocean`        | `#0077be`    | `#00d4ff`    | `#001a33`    |
+| `sunset`       | `#ff6b6b`    | `#ffa07a`    | `#1a0a0a`    |
+| `matrix`       | `#00ff41`    | `#008f11`    | `#000000`    |
+| `vapor`        | `#ff71ce`    | `#01cdfe`    | `#0a0a14`    |
+| `gold`         | `#ffd700`    | `#b8860b`    | `#0a0800`    |
+| `infrared`     | `#ff0000`    | `#ff6600`    | `#0a0000`    |
+| `aurora`       | `#00ff87`    | `#7b2fbe`    | `#000a0a`    |
+| `midnight`     | `#191970`    | `#6a5acd`    | `#050510`    |
+
+### F. VFX Properties (Post-Processing)
+
+Real-time post-processing effects applied in the fragment shader. All defaults to 0 (disabled).
+
+| Property     | Range     | Unit    | Effect                                              |
+| ------------ | --------- | ------- | --------------------------------------------------- |
+| `angle`      | [0, 360]  | Degrees | Rotates displacement field orientation              |
+| `grain`      | [0, 1]    | Factor  | Film grain overlay (time-varying dual-noise)        |
+| `glow`       | [0, 2]    | Factor  | Bloom / glow strength on wireframe and solid modes  |
+| `chromatic`  | [0, 1]    | Factor  | RGB channel splitting via UV displacement           |
+| `vignette`   | [0, 1]    | Factor  | Smooth radial edge darkening                        |
+| `blur`       | [0, 1]    | Factor  | Distance-based depth blur simulation                |
 
 ---
 
@@ -127,6 +157,7 @@ Where:
 | ------------------------ | -------------------- | -------------------------------------- |
 | Vertex Cap (default)     | 100,000              | Mobile GPU thermal limit               |
 | Draw Calls               | 1 (Uber-Shader)      | O(1) overhead regardless of complexity |
+| Shader Uniforms          | 28                   | 22 base + 6 VFX post-processing       |
 | Input-to-Visual Latency  | < 16.6ms             | 60 FPS minimum guarantee               |
 | Float Precision (desktop)| `highp`              | Sub-pixel accuracy                     |
 | Float Precision (mobile) | `mediump` fallback   | Battery conservation                   |

@@ -24,13 +24,15 @@ npm install smntc three
 
 All configuration uses a single `SMNTCConfig` object with five semantic token categories:
 
-- **surface**: `'topographic'` | `'crystalline'` | `'fluid'` | `'glitch'`
-- **vibe**: `'stable'` | `'calm'` | `'agitated'` | `'chaotic'`
+- **surface**: `'topographic'` | `'crystalline'` | `'fluid'` | `'glitch'` | `'organic'` | `'terrain'` | `'plasma'` | `'wave'`
+- **vibe**: `'stable'` | `'calm'` | `'agitated'` | `'chaotic'` | `'breathing'` | `'pulse'` | `'drift'` | `'storm'` | `'cinematic'`
 - **reactivity**: `'static'` | `'magnetic'` | `'repel'` | `'shockwave'`
 - **fidelity**: `'low'` | `'medium'` | `'high'` | `'ultra'`
-- **palette**: `'monochrome'` | `'ember'` | `'arctic'` | `'neon'` | `'phantom'`
+- **palette**: `'monochrome'` | `'ember'` | `'arctic'` | `'neon'` | `'phantom'` | `'ocean'` | `'sunset'` | `'matrix'` | `'vapor'` | `'gold'` | `'infrared'` | `'aurora'` | `'midnight'`
 
 Plus numeric overrides: `intensity` (0-2), `speed` (0-5), `contourLines` (4-64).
+
+Plus VFX post-processing: `angle` (0-360°), `grain` (0-1), `glow` (0-2), `chromatic` (0-1), `vignette` (0-1), `blur` (0-1).
 
 ## Minimal Example (Vanilla Three.js)
 
@@ -114,6 +116,12 @@ npx smntc preview
 - `kernel.setSurface('crystalline')` — Switch surface mode
 - `kernel.setPalette('neon')` — Spring-animated color transition
 - `kernel.setReactivity('shockwave')` — Change interaction model
+- `kernel.setAngle(45)` — Rotate displacement field
+- `kernel.setGrain(0.3)` — Add film grain
+- `kernel.setGlow(1.0)` — Add bloom/glow
+- `kernel.setChromatic(0.5)` — Chromatic aberration
+- `kernel.setVignette(0.4)` — Edge darkening
+- `kernel.setBlur(0.2)` — Depth blur
 - `kernel.configure({ vibe: 'chaotic', palette: 'ember' })` — Bulk update
 - `kernel.dispose()` — Clean up all GPU/DOM resources
 

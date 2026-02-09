@@ -12,10 +12,10 @@
 // ---------------------------------------------------------------------------
 
 /** All valid surface tokens. */
-export const SURFACES = Object.freeze(['topographic', 'crystalline', 'fluid', 'glitch'] as const);
+export const SURFACES = Object.freeze(['topographic', 'crystalline', 'fluid', 'glitch', 'organic', 'terrain', 'plasma', 'wave'] as const);
 
 /** All valid vibe tokens. */
-export const VIBES = Object.freeze(['stable', 'calm', 'agitated', 'chaotic'] as const);
+export const VIBES = Object.freeze(['stable', 'calm', 'agitated', 'chaotic', 'breathing', 'pulse', 'drift', 'storm', 'cinematic'] as const);
 
 /** All valid reactivity tokens. */
 export const REACTIVITIES = Object.freeze(['static', 'magnetic', 'repel', 'shockwave'] as const);
@@ -24,7 +24,7 @@ export const REACTIVITIES = Object.freeze(['static', 'magnetic', 'repel', 'shock
 export const FIDELITIES = Object.freeze(['low', 'medium', 'high', 'ultra'] as const);
 
 /** All valid palette tokens. */
-export const PALETTES = Object.freeze(['monochrome', 'ember', 'arctic', 'neon', 'phantom'] as const);
+export const PALETTES = Object.freeze(['monochrome', 'ember', 'arctic', 'neon', 'phantom', 'ocean', 'sunset', 'matrix', 'vapor', 'gold', 'infrared', 'aurora', 'midnight'] as const);
 
 // ---------------------------------------------------------------------------
 // Union types — derived from the const arrays above.
@@ -37,6 +37,10 @@ export const PALETTES = Object.freeze(['monochrome', 'ember', 'arctic', 'neon', 
  * - `crystalline`: Sharp, faceted vertex clustering (Voronoi noise).
  * - `fluid`: Organic, continuous surface displacement (Simplex noise).
  * - `glitch`: Step-function displacement with randomized UV-shifting.
+ * - `organic`: Flowing, biological membrane shapes (domain-warped simplex).
+ * - `terrain`: Realistic mountainous landscape (ridged multi-fractal).
+ * - `plasma`: Swirling energy plasma (animated FBM with color cycling).
+ * - `wave`: Classic ocean wave patterns (Gerstner wave approximation).
  */
 export type Surface = (typeof SURFACES)[number];
 
@@ -47,6 +51,11 @@ export type Surface = (typeof SURFACES)[number];
  * - `calm`: Slow, rhythmic oscillation (ω ≈ 0.5).
  * - `agitated`: High-frequency, erratic shifts (ω ≈ 2.5).
  * - `chaotic`: Stochastic vertex bursts; zero damping (ω ≈ 5.0+).
+ * - `breathing`: Ultra-slow, meditation-like expansion/contraction (ω ≈ 0.08).
+ * - `pulse`: Regular beat-synchronized pulses (ω ≈ 1.2).
+ * - `drift`: Languid horizontal drift movement (ω ≈ 0.3).
+ * - `storm`: Violent, high-energy turbulence (ω ≈ 4.0).
+ * - `cinematic`: Dramatic slow-motion feel (ω ≈ 0.2).
  */
 export type Vibe = (typeof VIBES)[number];
 
@@ -78,6 +87,14 @@ export type Fidelity = (typeof FIDELITIES)[number];
  * - `arctic`: Cool blue/white tones.
  * - `neon`: High-contrast cyberpunk greens and magentas.
  * - `phantom`: Muted grey-purple stealth aesthetic.
+ * - `ocean`: Deep blue/teal oceanic palette.
+ * - `sunset`: Warm orange-to-purple gradient tones.
+ * - `matrix`: Classic green-on-black terminal aesthetic.
+ * - `vapor`: Vaporwave pink/cyan/purple.
+ * - `gold`: Luxury gold/champagne tones.
+ * - `infrared`: Thermal imaging inspired reds/oranges.
+ * - `aurora`: Northern lights green/purple/blue.
+ * - `midnight`: Deep navy with silver accents.
  */
 export type Palette = (typeof PALETTES)[number];
 
@@ -115,6 +132,26 @@ export interface SMNTCConfig {
 
   /** Whether to auto-pause when the tab is hidden. Default: `true` */
   thermalGuard?: boolean;
+
+  // -- Post-Processing / VFX (AE/C4D/Premiere-inspired) --
+
+  /** Displacement rotation angle in degrees. Range: [0, 360]. Default: `0` */
+  angle?: number;
+
+  /** Film grain overlay intensity (AE Noise). Range: [0, 1]. Default: `0` */
+  grain?: number;
+
+  /** Bloom/glow emulation intensity (AE Glow). Range: [0, 2]. Default: `0` */
+  glow?: number;
+
+  /** Chromatic aberration strength (Premiere Lens Distortion). Range: [0, 1]. Default: `0` */
+  chromatic?: number;
+
+  /** Vignette edge darkening (Cinema lens). Range: [0, 1]. Default: `0` */
+  vignette?: number;
+
+  /** Depth-of-field blur simulation. Range: [0, 1]. Default: `0` */
+  blur?: number;
 }
 
 /**
@@ -151,6 +188,14 @@ export interface ShaderConstants {
   intensity: number;
   speed: number;
   contourLines: number;
+
+  // -- Post-Processing / VFX --
+  angle: number;
+  grain: number;
+  glow: number;
+  chromatic: number;
+  vignette: number;
+  blur: number;
 }
 
 /**

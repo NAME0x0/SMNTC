@@ -8,6 +8,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+#### New Semantic Tokens
+- **4 new surfaces:** `organic` (domain-warped simplex), `terrain` (ridged multi-fractal), `plasma` (animated FBM), `wave` (multi-directional Gerstner).
+- **5 new vibes:** `breathing` (ultra-slow pulse), `pulse` (heartbeat cadence), `drift` (gentle wind-like), `storm` (intense turbulence), `cinematic` (film-grade sweep).
+- **8 new palettes:** `ocean`, `sunset`, `matrix`, `vapor`, `gold`, `infrared`, `aurora`, `midnight`.
+
+#### VFX Properties (Post-Processing Pipeline)
+- `angle` — Displacement rotation in degrees [0–360].
+- `grain` — Film grain intensity [0–1]. Time-varying dual-noise implementation.
+- `glow` — Bloom/glow strength [0–2]. Applied to both wireframe and solid modes.
+- `chromatic` — Chromatic aberration [0–1]. UV-displacement RGB channel splitting.
+- `vignette` — Edge darkening [0–1]. Smoothstep radial falloff.
+- `blur` — Depth blur simulation [0–1]. Distance-based softening.
+
+#### New Setters
+- `setAngle()`, `setGrain()`, `setGlow()`, `setChromatic()`, `setVignette()`, `setBlur()` on both `SMNTCKernel` and `SMNTCMaterial`.
+
+#### New Examples
+- `examples/cinema4d/` — Cinema 4D / Octane-inspired renderer viewport with camera orbit and cinematic presets.
+- `examples/aftereffects/` — After Effects NLE-style compositor with timeline, layers, effect sliders, and playback controls.
+- `examples/generative/` — Generative art playground with seeded PRNG, PNG export, and gallery strip.
+
+#### Enhanced Examples
+- `examples/basic/` — Complete rewrite with glassmorphism controls, all 8 surfaces, 9 vibes, 13 palettes, 7 VFX sliders, keyboard shortcuts.
+- `examples/hero/` — Premium landing page with typewriter headline, CTA buttons, stat badges, scroll parallax.
+- `examples/ambient/` — SaaS dashboard with stat cards, sparklines, activity chart, surface/vibe/palette selectors.
+- `examples/product/` — Product showcase with palette carousel, feature highlights, glassmorphism card.
+- `examples/web-component/` — Design system explorer with live config preview, token inspector, copy-to-clipboard.
+
+#### Infrastructure
+- Web component `<smntc-surface>` now supports `angle`, `grain`, `glow`, `chromatic`, `vignette`, `blur` attributes.
+- React `<SMNTCSurface>` component accepts all 6 new VFX props with spring-interpolated transitions.
+- `SMNTCMaterial` spring bank expanded with 6 new spring channels for smooth VFX transitions.
+- `smntc.schema.json` updated with all new enum values and VFX property definitions.
+- 68 unit tests (expanded from 42) covering all new tokens and VFX clamping.
+
+### Changed
+- Vertex shader expanded from 4→8 surface displacement modes with angle rotation.
+- Fragment shader completely rewritten with full post-processing pipeline (grain, glow, chromatic aberration, vignette, blur).
 - Security policy (`SECURITY.md`) and community code of conduct (`CODE_OF_CONDUCT.md`).
 - GitHub Sponsors configuration (`.github/FUNDING.yml`).
 - JSR registry config (`jsr.json`) and StackBlitz config (`stackblitz.json`).

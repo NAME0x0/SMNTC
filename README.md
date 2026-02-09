@@ -174,6 +174,10 @@ SMNTC replaces shader math with a **Semantic Token Dictionary**. You set *intent
 | `crystalline` | Sharp, faceted clustering — Voronoi noise |
 | `fluid` | Organic, continuous flow — Simplex noise |
 | `glitch` | Step-function displacement — quantized random |
+| `organic` | Domain-warped simplex — slow fractal warping |
+| `terrain` | Ridged multi-fractal — mountain-like ridgelines |
+| `plasma` | Animated FBM — swirling energy fields |
+| `wave` | Multi-directional Gerstner — ocean wave simulation |
 
 ### Vibe (Motion Character)
 
@@ -183,6 +187,11 @@ SMNTC replaces shader math with a **Semantic Token Dictionary**. You set *intent
 | `calm` | Slow, rhythmic oscillation |
 | `agitated` | High-frequency, erratic shifts |
 | `chaotic` | Stochastic vertex bursts |
+| `breathing` | Ultra-slow inhale/exhale pulse |
+| `pulse` | Rhythmic beating — heartbeat cadence |
+| `drift` | Gentle lateral movement — wind-like |
+| `storm` | Intense turbulence — wind and rain |
+| `cinematic` | Slow sweeping motion — film-grade |
 
 ### Reactivity (User Interaction)
 
@@ -202,6 +211,14 @@ SMNTC replaces shader math with a **Semantic Token Dictionary**. You set *intent
 | `arctic` | Cool blue/white |
 | `neon` | Cyberpunk green/magenta |
 | `phantom` | Muted grey-purple stealth |
+| `ocean` | Deep blue/teal — underwater |
+| `sunset` | Orange-pink horizon gradient |
+| `matrix` | Terminal green on black |
+| `vapor` | Vaporwave pink/cyan pastels |
+| `gold` | Luxury gold/bronze |
+| `infrared` | Thermal imaging red/yellow |
+| `aurora` | Northern lights green/purple |
+| `midnight` | Deep indigo/violet |
 
 ### Fidelity (Rendering Quality)
 
@@ -231,6 +248,12 @@ const kernel = new SMNTCKernel({
   intensity: 1.0,           // Amplitude multiplier [0-2]
   speed: 1.0,               // Speed multiplier [0-5]
   contourLines: 16,         // Contour line count [4-64]
+  angle: 0,                 // Displacement rotation [0-360°]
+  grain: 0,                 // Film grain intensity [0-1]
+  glow: 0,                  // Bloom / glow strength [0-2]
+  chromatic: 0,             // Chromatic aberration [0-1]
+  vignette: 0,              // Edge darkening [0-1]
+  blur: 0,                  // Depth blur simulation [0-1]
   thermalGuard: true,       // Pause animation when tab hidden
 });
 ```
@@ -249,6 +272,12 @@ const kernel = new SMNTCKernel({
 | `setPalette(palette)` | Spring-interpolated color transition |
 | `setIntensity(n)` | Set amplitude multiplier |
 | `setSpeed(n)` | Set speed multiplier |
+| `setAngle(n)` | Set displacement rotation angle |
+| `setGrain(n)` | Set film grain intensity |
+| `setGlow(n)` | Set bloom/glow strength |
+| `setChromatic(n)` | Set chromatic aberration |
+| `setVignette(n)` | Set edge vignette darkness |
+| `setBlur(n)` | Set depth blur simulation |
 | `configure(config)` | Bulk-update any config properties |
 | `getMaterial()` | Access the underlying ShaderMaterial |
 | `getBackgroundColor()` | Get palette background as THREE.Color |
@@ -329,7 +358,8 @@ const config = applyPreset(corporate, { vibe: 'calm' });
 
 - **Spring Physics:** All state transitions use a damped harmonic oscillator (F = -kx - cv). No direct value mutation. Every "vibe" or "palette" change feels physically earned.
 - **Finite-Difference Normals:** Displacing vertices breaks lighting. The shader recalculates normals using finite differences, ensuring correct specular/diffuse even on moving waves.
-- **Uber-Shader:** All 4 surface modes compile into a single shader with branching. One draw call, O(1) overhead regardless of mode.
+- **Uber-Shader:** All 8 surface modes compile into a single shader with branching. One draw call, O(1) overhead regardless of mode.
+- **Post-Processing Pipeline:** Film grain, glow/bloom, chromatic aberration, vignette, and depth blur — all in-shader, no extra render passes.
 - **Thermal Guard:** Animation pauses on `visibilitychange` — zero battery drain on background tabs.
 - **Auto-Scaler:** Monitors frame delta and automatically downgrades fidelity to maintain 60 FPS.
 
@@ -348,7 +378,7 @@ const config = applyPreset(corporate, { vibe: 'calm' });
 ## Running the Demo
 
 Open `examples/basic/index.html` in any browser. No build step required — loads Three.js from CDN.
-Also available: `examples/hero/`, `examples/ambient/`, `examples/product/`, `examples/web-component/`.
+Also available: `examples/hero/`, `examples/ambient/`, `examples/product/`, `examples/web-component/`, `examples/cinema4d/`, `examples/aftereffects/`, `examples/generative/`.
 
 ```bash
 # Or serve locally:
@@ -417,8 +447,14 @@ smntc/
 │   │   └── index.html              # Calm dashboard demo
 │   ├── product/
 │   │   └── index.html              # Palette-switching demo
-│   └── web-component/
-│       └── index.html              # <smntc-surface> demo
+│   ├── web-component/
+│   │   └── index.html              # <smntc-surface> demo
+│   ├── cinema4d/
+│   │   └── index.html              # C4D/Octane-inspired viewport
+│   ├── aftereffects/
+│   │   └── index.html              # NLE-style compositor
+│   └── generative/
+│       └── index.html              # Generative art playground
 ├── templates/
 │   └── vanilla/                    # Vite + Three + SMNTC starter
 ├── src/cli/                         # CLI entry

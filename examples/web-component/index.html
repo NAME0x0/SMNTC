@@ -1,74 +1,830 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SMNTC — Web Component</title>
+  <title>SMNTC — Design System Explorer</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: "Manrope", sans-serif; background: #0a0b0f; color: #eef2ff; }
-    .wrap { display: grid; grid-template-columns: 1fr 320px; min-height: 100vh; }
-    smntc-surface { width: 100%; height: 100vh; display: block; }
-    .panel { padding: 32px; background: #11131b; border-left: 1px solid rgba(255,255,255,0.08); }
-    .panel h3 { font-size: 1.2rem; margin-bottom: 16px; }
-    .panel button {
-      width: 100%; margin-bottom: 10px; padding: 10px 12px; border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06);
-      color: #eef2ff; cursor: pointer; transition: 0.2s ease;
+    /* ================================================================
+       Reset & Base
+       ================================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0c14;
+      --panel: #11131b;
+      --card: #181b27;
+      --card-hover: #1f2333;
+      --border: #262a3a;
+      --border-hover: #3a3f56;
+      --text: #e2e4ec;
+      --text-muted: #8b8fa4;
+      --accent: #6c72ff;
+      --accent-dim: rgba(108,114,255,.12);
+      --success: #34d399;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --transition: 180ms ease;
     }
-    .panel button:hover { border-color: #7aa8ff; color: #7aa8ff; }
+
+    html, body {
+      height: 100%;
+      font-family: 'Manrope', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ================================================================
+       Layout — two-column
+       ================================================================ */
+    .layout {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .surface-col {
+      flex: 0 0 65%;
+      position: relative;
+      background: #000;
+    }
+
+    smntc-surface {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Floating badge on surface */
+    .surface-badge {
+      position: absolute;
+      top: 20px;
+      left: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(17,19,27,.72);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--text-muted);
+      pointer-events: none;
+      z-index: 10;
+    }
+    .surface-badge svg { flex-shrink: 0; }
+
+    /* ================================================================
+       Panel (right)
+       ================================================================ */
+    .panel {
+      flex: 0 0 35%;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 24px 24px 0;
+      flex-shrink: 0;
+    }
+
+    .panel-header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .version-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--accent-dim);
+      padding: 2px 9px;
+      border-radius: 999px;
+      letter-spacing: .4px;
+    }
+
+    .panel-header p {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Config preview */
+    .config-preview {
+      margin: 16px 24px 0;
+      padding: 14px 16px;
+      background: #0d0f17;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      white-space: pre;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .config-preview .tag { color: #6c72ff; }
+    .config-preview .attr { color: #34d399; }
+    .config-preview .val { color: #f9a825; }
+
+    /* Scrollable body */
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 24px 32px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .panel-body::-webkit-scrollbar { width: 5px; }
+    .panel-body::-webkit-scrollbar-track { background: transparent; }
+    .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ================================================================
+       Sections
+       ================================================================ */
+    .section { margin-top: 24px; }
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* ================================================================
+       Token Card Grid
+       ================================================================ */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .token-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px 4px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background var(--transition), border-color var(--transition), transform var(--transition);
+      user-select: none;
+    }
+    .token-card:hover {
+      background: var(--card-hover);
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+    .token-card.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .token-card .icon { font-size: 18px; line-height: 1; }
+    .token-card .label {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: capitalize;
+      text-align: center;
+    }
+    .token-card.active .label { color: var(--accent); }
+
+    /* ================================================================
+       Vibe Cards (wider, include description)
+       ================================================================ */
+    .vibe-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .vibe-card {
+      padding: 10px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background var(--transition), border-color var(--transition), transform var(--transition);
+      user-select: none;
+    }
+    .vibe-card:hover {
+      background: var(--card-hover);
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+    .vibe-card.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .vibe-card .vibe-name {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: capitalize;
+      color: var(--text);
+    }
+    .vibe-card.active .vibe-name { color: var(--accent); }
+    .vibe-card .vibe-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      line-height: 1.35;
+    }
+
+    /* ================================================================
+       Palette Swatches
+       ================================================================ */
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .swatch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 4px 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background var(--transition), border-color var(--transition), transform var(--transition);
+      user-select: none;
+    }
+    .swatch:hover { background: var(--card-hover); border-color: var(--border-hover); transform: translateY(-1px); }
+    .swatch.active { border-color: var(--accent); background: var(--accent-dim); }
+
+    .swatch-colors {
+      display: flex;
+      gap: 3px;
+    }
+    .swatch-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .swatch .label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: capitalize;
+    }
+    .swatch.active .label { color: var(--accent); }
+
+    /* ================================================================
+       Sliders
+       ================================================================ */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .slider-row .slider-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      min-width: 60px;
+    }
+    .slider-row input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    .slider-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--panel);
+      cursor: pointer;
+    }
+    .slider-row input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--panel);
+      cursor: pointer;
+    }
+    .slider-row .slider-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* ================================================================
+       Reactivity Toggles
+       ================================================================ */
+    .reactivity-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .react-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 4px;
+      text-align: center;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-transform: capitalize;
+      transition: background var(--transition), border-color var(--transition), transform var(--transition), color var(--transition);
+      user-select: none;
+    }
+    .react-btn:hover { background: var(--card-hover); border-color: var(--border-hover); transform: translateY(-1px); }
+    .react-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+    .react-btn .react-icon { font-size: 16px; line-height: 1; }
+
+    /* ================================================================
+       Wireframe Switch
+       ================================================================ */
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .switch-row span {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      cursor: pointer;
+    }
+    .switch input { display: none; }
+    .switch .slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 11px;
+      transition: background var(--transition);
+    }
+    .switch .slider::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      background: var(--text);
+      border-radius: 50%;
+      transition: transform var(--transition);
+    }
+    .switch input:checked + .slider {
+      background: var(--accent);
+    }
+    .switch input:checked + .slider::after {
+      transform: translateX(18px);
+    }
+
+    /* ================================================================
+       Copy Button
+       ================================================================ */
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px 0;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'Manrope', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: opacity var(--transition), transform var(--transition);
+    }
+    .copy-btn:hover { opacity: .88; }
+    .copy-btn:active { transform: scale(.98); }
+    .copy-btn.copied {
+      background: var(--success);
+    }
+
+    /* ================================================================
+       Responsive: stack on mobile
+       ================================================================ */
+    @media (max-width: 840px) {
+      .layout {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+      }
+      .surface-col {
+        flex: none;
+        height: 50vh;
+        min-height: 320px;
+      }
+      .panel {
+        flex: none;
+        border-left: none;
+        border-top: 1px solid var(--border);
+        max-height: none;
+        overflow: visible;
+      }
+      .panel-body { overflow: visible; }
+      .card-grid, .palette-grid { grid-template-columns: repeat(4, 1fr); }
+      .vibe-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      .card-grid, .palette-grid, .reactivity-grid { grid-template-columns: repeat(2, 1fr); }
+      .vibe-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
+
+<div class="layout">
+  <!-- =========================================================
+       Left Column — Surface
+       ========================================================= -->
+  <div class="surface-col">
+    <div class="surface-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+      Live Preview
+    </div>
+
     <smntc-surface
       id="surface"
       surface="topographic"
       vibe="calm"
-      palette="arctic"
-      reactivity="magnetic"
-      fidelity="medium"
-      style="display:block"
+      palette="monochrome"
+      reactivity="static"
+      fidelity="high"
+      intensity="1"
+      speed="1"
+      wireframe="true"
     ></smntc-surface>
-    <div class="panel">
-      <h3>Web Component Controls</h3>
-      <button data-surface="topographic">Topographic</button>
-      <button data-surface="fluid">Fluid</button>
-      <button data-surface="glitch">Glitch</button>
-      <button data-vibe="stable">Stable</button>
-      <button data-vibe="calm">Calm</button>
-      <button data-vibe="agitated">Agitated</button>
-      <button data-palette="monochrome">Monochrome</button>
-      <button data-palette="arctic">Arctic</button>
-      <button data-palette="neon">Neon</button>
-    </div>
   </div>
 
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
-    }
+  <!-- =========================================================
+       Right Column — Token Explorer
+       ========================================================= -->
+  <div class="panel">
+    <div class="panel-header">
+      <h1>SMNTC Design System <span class="version-badge">v1.1.0</span></h1>
+      <p>Explore semantic tokens and configure the shader surface in real-time.</p>
+    </div>
+
+    <!-- Live config preview -->
+    <div class="config-preview" id="configPreview"></div>
+
+    <div class="panel-body">
+      <!-- ===== Surface ===== -->
+      <div class="section">
+        <div class="section-label">Surface</div>
+        <div class="card-grid" id="surfaceGrid"></div>
+      </div>
+
+      <!-- ===== Vibe ===== -->
+      <div class="section">
+        <div class="section-label">Vibe</div>
+        <div class="vibe-grid" id="vibeGrid"></div>
+      </div>
+
+      <!-- ===== Palette ===== -->
+      <div class="section">
+        <div class="section-label">Palette</div>
+        <div class="palette-grid" id="paletteGrid"></div>
+      </div>
+
+      <!-- ===== VFX ===== -->
+      <div class="section">
+        <div class="section-label">VFX Controls</div>
+        <div id="slidersContainer"></div>
+      </div>
+
+      <!-- ===== Reactivity ===== -->
+      <div class="section">
+        <div class="section-label">Reactivity</div>
+        <div class="reactivity-grid" id="reactivityGrid"></div>
+      </div>
+
+      <!-- ===== Wireframe ===== -->
+      <div class="section">
+        <div class="switch-row">
+          <span>Wireframe</span>
+          <label class="switch">
+            <input type="checkbox" id="wireframeToggle" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ===== Copy ===== -->
+      <button class="copy-btn" id="copyBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy Config
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     Scripts
+     ========================================================= -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
   }
-  </script>
+}
+</script>
+<script type="module">
+import '../../dist/web/index.mjs';
 
-  <script type="module">
-    import '../../dist/web/index.mjs';
+// ─── State ───────────────────────────────────────────────────────────
+const state = {
+  surface: 'topographic',
+  vibe: 'calm',
+  palette: 'monochrome',
+  reactivity: 'static',
+  intensity: 1,
+  speed: 1,
+  angle: 0,
+  wireframe: true,
+};
 
-    const surface = document.getElementById('surface');
-    const buttons = document.querySelectorAll('button');
+const el = document.getElementById('surface');
 
-    buttons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const { surface: s, vibe, palette } = button.dataset;
-        if (s) surface.setAttribute('surface', s);
-        if (vibe) surface.setAttribute('vibe', vibe);
-        if (palette) surface.setAttribute('palette', palette);
-      });
-    });
-  </script>
+// ─── Token Data ──────────────────────────────────────────────────────
+const surfaces = [
+  { id: 'topographic', icon: '🏔' },
+  { id: 'crystalline', icon: '💎' },
+  { id: 'fluid',       icon: '🌊' },
+  { id: 'glitch',      icon: '⚡' },
+  { id: 'organic',     icon: '🧬' },
+  { id: 'terrain',     icon: '🗻' },
+  { id: 'plasma',      icon: '🔮' },
+  { id: 'wave',        icon: '〰️' },
+];
+
+const vibes = [
+  { id: 'stable',    desc: 'Near-static, subtle breathing' },
+  { id: 'calm',      desc: 'Slow rhythmic oscillation' },
+  { id: 'agitated',  desc: 'High-freq erratic shifts' },
+  { id: 'chaotic',   desc: 'Stochastic vertex bursts' },
+  { id: 'breathing', desc: 'Ultra-slow expansion cycle' },
+  { id: 'pulse',     desc: 'Beat-synchronized pulses' },
+  { id: 'drift',     desc: 'Languid horizontal drift' },
+  { id: 'storm',     desc: 'High-energy turbulence' },
+  { id: 'cinematic', desc: 'Dramatic slow-motion feel' },
+];
+
+const palettes = [
+  { id: 'monochrome', primary: '#e0e0e0', accent: '#ffffff' },
+  { id: 'ember',      primary: '#ff6b35', accent: '#ffaa00' },
+  { id: 'arctic',     primary: '#88ccff', accent: '#ffffff' },
+  { id: 'neon',       primary: '#00ff88', accent: '#ff00ff' },
+  { id: 'phantom',    primary: '#a0a0b0', accent: '#6060a0' },
+  { id: 'ocean',      primary: '#0077b6', accent: '#00b4d8' },
+  { id: 'sunset',     primary: '#f77f00', accent: '#d62828' },
+  { id: 'matrix',     primary: '#00ff41', accent: '#008f11' },
+  { id: 'vapor',      primary: '#ff71ce', accent: '#01cdfe' },
+  { id: 'gold',       primary: '#ffd700', accent: '#daa520' },
+  { id: 'infrared',   primary: '#ff0055', accent: '#ff6600' },
+  { id: 'aurora',     primary: '#43b581', accent: '#7289da' },
+  { id: 'midnight',   primary: '#c0c0c8', accent: '#4a6fa5' },
+];
+
+const reactivities = [
+  { id: 'static',    icon: '⏸' },
+  { id: 'magnetic',  icon: '🧲' },
+  { id: 'repel',     icon: '↔️' },
+  { id: 'shockwave', icon: '💥' },
+];
+
+const sliderDefs = [
+  { id: 'intensity', label: 'Intensity', min: 0, max: 2,   step: 0.05 },
+  { id: 'speed',     label: 'Speed',     min: 0, max: 5,   step: 0.1  },
+  { id: 'angle',     label: 'Angle',     min: 0, max: 360, step: 1    },
+];
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+function applyState() {
+  el.setAttribute('surface',    state.surface);
+  el.setAttribute('vibe',       state.vibe);
+  el.setAttribute('palette',    state.palette);
+  el.setAttribute('reactivity', state.reactivity);
+  el.setAttribute('intensity',  String(state.intensity));
+  el.setAttribute('speed',      String(state.speed));
+  el.setAttribute('wireframe',  String(state.wireframe));
+
+  if (state.angle !== 0) {
+    el.setAttribute('angle', String(state.angle));
+  } else {
+    el.removeAttribute('angle');
+  }
+
+  updatePreview();
+}
+
+function updatePreview() {
+  const lines = [
+    ['surface',    state.surface],
+    ['vibe',       state.vibe],
+    ['palette',    state.palette],
+    ['reactivity', state.reactivity],
+    ['intensity',  state.intensity],
+    ['speed',      state.speed],
+  ];
+  if (state.angle)    lines.push(['angle', state.angle]);
+  lines.push(['wireframe', state.wireframe]);
+  lines.push(['fidelity', 'high']);
+
+  const inner = lines.map(
+    ([k, v]) => `  <span class="attr">${k}</span>=<span class="val">"${v}"</span>`
+  ).join('\n');
+
+  document.getElementById('configPreview').innerHTML =
+    `<span class="tag">&lt;smntc-surface</span>\n${inner}\n<span class="tag">/&gt;</span>`;
+}
+
+function setActive(container, activeId) {
+  container.querySelectorAll('[data-id]').forEach(c =>
+    c.classList.toggle('active', c.dataset.id === activeId)
+  );
+}
+
+// ─── Build Surface Grid ──────────────────────────────────────────────
+const surfaceGrid = document.getElementById('surfaceGrid');
+surfaces.forEach(s => {
+  const card = document.createElement('div');
+  card.className = `token-card${s.id === state.surface ? ' active' : ''}`;
+  card.dataset.id = s.id;
+  card.innerHTML = `<span class="icon">${s.icon}</span><span class="label">${s.id}</span>`;
+  card.addEventListener('click', () => {
+    state.surface = s.id;
+    setActive(surfaceGrid, s.id);
+    applyState();
+  });
+  surfaceGrid.appendChild(card);
+});
+
+// ─── Build Vibe Grid ─────────────────────────────────────────────────
+const vibeGrid = document.getElementById('vibeGrid');
+vibes.forEach(v => {
+  const card = document.createElement('div');
+  card.className = `vibe-card${v.id === state.vibe ? ' active' : ''}`;
+  card.dataset.id = v.id;
+  card.innerHTML = `<div class="vibe-name">${v.id}</div><div class="vibe-desc">${v.desc}</div>`;
+  card.addEventListener('click', () => {
+    state.vibe = v.id;
+    setActive(vibeGrid, v.id);
+    applyState();
+  });
+  vibeGrid.appendChild(card);
+});
+
+// ─── Build Palette Grid ──────────────────────────────────────────────
+const paletteGrid = document.getElementById('paletteGrid');
+palettes.forEach(p => {
+  const card = document.createElement('div');
+  card.className = `swatch${p.id === state.palette ? ' active' : ''}`;
+  card.dataset.id = p.id;
+  card.innerHTML =
+    `<div class="swatch-colors">` +
+      `<div class="swatch-dot" style="background:${p.primary}"></div>` +
+      `<div class="swatch-dot" style="background:${p.accent}"></div>` +
+    `</div>` +
+    `<span class="label">${p.id}</span>`;
+  card.addEventListener('click', () => {
+    state.palette = p.id;
+    setActive(paletteGrid, p.id);
+    applyState();
+  });
+  paletteGrid.appendChild(card);
+});
+
+// ─── Build Sliders ───────────────────────────────────────────────────
+const slidersContainer = document.getElementById('slidersContainer');
+sliderDefs.forEach(s => {
+  const row = document.createElement('div');
+  row.className = 'slider-row';
+
+  const formatVal = v => s.step < 1 ? Number(v).toFixed(s.step < 0.1 ? 2 : 1) : String(Math.round(v));
+
+  row.innerHTML =
+    `<span class="slider-label">${s.label}</span>` +
+    `<input type="range" min="${s.min}" max="${s.max}" step="${s.step}" value="${state[s.id]}" />` +
+    `<span class="slider-val">${formatVal(state[s.id])}</span>`;
+
+  slidersContainer.appendChild(row);
+
+  const input = row.querySelector('input');
+  const valEl = row.querySelector('.slider-val');
+
+  input.addEventListener('input', () => {
+    const v = parseFloat(input.value);
+    state[s.id] = v;
+    valEl.textContent = formatVal(v);
+    applyState();
+  });
+});
+
+// ─── Build Reactivity Grid ───────────────────────────────────────────
+const reactivityGrid = document.getElementById('reactivityGrid');
+reactivities.forEach(r => {
+  const btn = document.createElement('div');
+  btn.className = `react-btn${r.id === state.reactivity ? ' active' : ''}`;
+  btn.dataset.id = r.id;
+  btn.innerHTML = `<span class="react-icon">${r.icon}</span>${r.id}`;
+  btn.addEventListener('click', () => {
+    state.reactivity = r.id;
+    setActive(reactivityGrid, r.id);
+    applyState();
+  });
+  reactivityGrid.appendChild(btn);
+});
+
+// ─── Wireframe Toggle ────────────────────────────────────────────────
+const wireframeToggle = document.getElementById('wireframeToggle');
+wireframeToggle.addEventListener('change', () => {
+  state.wireframe = wireframeToggle.checked;
+  applyState();
+});
+
+// ─── Copy Button ─────────────────────────────────────────────────────
+const copyBtn = document.getElementById('copyBtn');
+copyBtn.addEventListener('click', () => {
+  const attrs = [
+    `surface="${state.surface}"`,
+    `vibe="${state.vibe}"`,
+    `palette="${state.palette}"`,
+    `reactivity="${state.reactivity}"`,
+    `intensity="${state.intensity}"`,
+    `speed="${state.speed}"`,
+  ];
+  if (state.angle) attrs.push(`angle="${state.angle}"`);
+  attrs.push(`wireframe="${state.wireframe}"`);
+  attrs.push(`fidelity="high"`);
+
+  const tag = `<smntc-surface\n  ${attrs.join('\n  ')}\n/>`;
+
+  navigator.clipboard.writeText(tag).then(() => {
+    copyBtn.classList.add('copied');
+    copyBtn.innerHTML =
+      `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+    setTimeout(() => {
+      copyBtn.classList.remove('copied');
+      copyBtn.innerHTML =
+        `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Config`;
+    }, 1800);
+  });
+});
+
+// ─── Initial render ──────────────────────────────────────────────────
+updatePreview();
+</script>
+
 </body>
 </html>

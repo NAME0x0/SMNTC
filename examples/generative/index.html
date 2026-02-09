@@ -1,0 +1,1439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMNTC Generative — Algorithmic Art Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ====================================================================
+       RESET & BASE
+       ==================================================================== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      background: #050510;
+      color: #e2e8f4;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ====================================================================
+       CANVAS
+       ==================================================================== */
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+    }
+
+    /* ====================================================================
+       GLASSMORPHISM BASE
+       ==================================================================== */
+    .glass {
+      background: rgba(10, 14, 28, 0.55);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 14px;
+    }
+
+    /* ====================================================================
+       CONTROL PANEL (top-right, collapsible)
+       ==================================================================== */
+    #panel {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 10;
+      width: 300px;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.08) transparent;
+    }
+    #panel::-webkit-scrollbar { width: 4px; }
+    #panel::-webkit-scrollbar-track { background: transparent; }
+    #panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    #panel.hidden {
+      transform: translateX(340px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ── Section styling ── */
+    .section-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 10px;
+    }
+    .section { display: flex; flex-direction: column; gap: 8px; }
+    .section + .section {
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    /* ── Seed row ── */
+    .seed-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .seed-display {
+      flex: 1;
+      font-family: 'Space Grotesk', monospace;
+      font-size: 18px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.03em;
+    }
+    .btn {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: #e2e8f4;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.2);
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary {
+      background: rgba(100, 140, 220, 0.2);
+      border-color: rgba(100, 140, 220, 0.35);
+      color: #a0c0ff;
+    }
+    .btn-primary:hover {
+      background: rgba(100, 140, 220, 0.3);
+    }
+
+    /* ── Cycle row (surface/vibe/palette) ── */
+    .cycle-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cycle-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      width: 56px;
+      flex-shrink: 0;
+    }
+    .cycle-value {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+      text-transform: capitalize;
+      text-align: center;
+    }
+    .cycle-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.5);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .cycle-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+
+    /* ── Slider row ── */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .slider-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      width: 72px;
+      flex-shrink: 0;
+    }
+    .slider-value {
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.6);
+      width: 40px;
+      text-align: right;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.08);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #a0c0ff;
+      border: 2px solid rgba(255,255,255,0.2);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #a0c0ff;
+      border: 2px solid rgba(255,255,255,0.2);
+      cursor: pointer;
+    }
+
+    /* ── Export section ── */
+    .resolution-display {
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      font-variant-numeric: tabular-nums;
+    }
+    .export-btns {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(10, 14, 28, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #a0c0ff;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ====================================================================
+       TITLE OVERLAY (bottom-left)
+       ==================================================================== */
+    #title-overlay {
+      position: fixed;
+      bottom: 80px;
+      left: 24px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    #title-overlay .brand {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.25);
+      margin-bottom: 4px;
+    }
+    #title-overlay .description {
+      font-size: 13px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.45);
+    }
+    #title-overlay .description .token {
+      color: rgba(255,255,255,0.7);
+    }
+    #title-overlay .vfx-summary {
+      font-size: 11px;
+      color: rgba(255,255,255,0.2);
+      margin-top: 2px;
+    }
+
+    /* ====================================================================
+       GALLERY STRIP (bottom)
+       ==================================================================== */
+    #gallery {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.06) transparent;
+      background: linear-gradient(to top, rgba(5,5,16,0.7) 0%, transparent 100%);
+    }
+    #gallery::-webkit-scrollbar { height: 3px; }
+    #gallery::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+
+    .gallery-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background-size: cover;
+      background-position: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+      opacity: 0.7;
+    }
+    .gallery-thumb:hover {
+      opacity: 1;
+      border-color: rgba(255,255,255,0.25);
+      transform: translateY(-2px);
+    }
+    .gallery-thumb.active {
+      opacity: 1;
+      border-color: rgba(100, 140, 220, 0.5);
+      box-shadow: 0 0 12px rgba(100, 140, 220, 0.2);
+    }
+    .gallery-empty {
+      font-size: 11px;
+      color: rgba(255,255,255,0.15);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    /* ====================================================================
+       KEYBOARD HINT
+       ==================================================================== */
+    #kb-hint {
+      position: fixed;
+      bottom: 76px;
+      right: 16px;
+      z-index: 10;
+      font-size: 10px;
+      color: rgba(255,255,255,0.15);
+      pointer-events: none;
+      text-align: right;
+      line-height: 1.6;
+    }
+    #kb-hint kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      font-family: 'Space Grotesk', monospace;
+      font-size: 10px;
+      color: rgba(255,255,255,0.25);
+    }
+
+    /* ====================================================================
+       RESPONSIVE
+       ==================================================================== */
+    @media (max-width: 600px) {
+      #panel { width: 260px; right: 8px; top: 8px; padding: 14px; }
+      #title-overlay { bottom: 74px; left: 12px; }
+      #kb-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- WebGL Canvas -->
+  <canvas id="scene"></canvas>
+
+  <!-- Control Panel -->
+  <div id="panel" class="glass">
+    <!-- Seed -->
+    <div class="section">
+      <div class="section-title">Seed</div>
+      <div class="seed-row">
+        <div class="seed-display" id="seedDisplay">00000</div>
+        <button class="btn btn-primary" id="btnRandomize" title="Randomize (R)">🎲 Randomize</button>
+      </div>
+    </div>
+
+    <!-- Composition -->
+    <div class="section">
+      <div class="section-title">Composition</div>
+      <div class="cycle-row">
+        <span class="cycle-label">Surface</span>
+        <button class="cycle-btn" id="surfPrev">◀</button>
+        <span class="cycle-value" id="surfValue">topographic</span>
+        <button class="cycle-btn" id="surfNext">▶</button>
+      </div>
+      <div class="cycle-row">
+        <span class="cycle-label">Vibe</span>
+        <button class="cycle-btn" id="vibePrev">◀</button>
+        <span class="cycle-value" id="vibeValue">calm</span>
+        <button class="cycle-btn" id="vibeNext">▶</button>
+      </div>
+      <div class="cycle-row">
+        <span class="cycle-label">Palette</span>
+        <button class="cycle-btn" id="palPrev">◀</button>
+        <span class="cycle-value" id="palValue">monochrome</span>
+        <button class="cycle-btn" id="palNext">▶</button>
+      </div>
+    </div>
+
+    <!-- Parameters -->
+    <div class="section">
+      <div class="section-title">Parameters</div>
+      <div class="slider-row">
+        <span class="slider-label">Intensity</span>
+        <input type="range" id="sliderIntensity" min="0" max="2" step="0.01" value="1" />
+        <span class="slider-value" id="valIntensity">1.00</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Speed</span>
+        <input type="range" id="sliderSpeed" min="0" max="5" step="0.01" value="1" />
+        <span class="slider-value" id="valSpeed">1.00</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Angle</span>
+        <input type="range" id="sliderAngle" min="0" max="360" step="1" value="0" />
+        <span class="slider-value" id="valAngle">0°</span>
+      </div>
+    </div>
+
+    <!-- Effects -->
+    <div class="section">
+      <div class="section-title">Effects</div>
+      <div class="slider-row">
+        <span class="slider-label">Grain</span>
+        <input type="range" id="sliderGrain" min="0" max="1" step="0.01" value="0" />
+        <span class="slider-value" id="valGrain">0%</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Glow</span>
+        <input type="range" id="sliderGlow" min="0" max="2" step="0.01" value="0" />
+        <span class="slider-value" id="valGlow">0%</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Chromatic</span>
+        <input type="range" id="sliderChromatic" min="0" max="1" step="0.01" value="0" />
+        <span class="slider-value" id="valChromatic">0%</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Vignette</span>
+        <input type="range" id="sliderVignette" min="0" max="1" step="0.01" value="0" />
+        <span class="slider-value" id="valVignette">0%</span>
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="section">
+      <div class="section-title">Export</div>
+      <div class="resolution-display" id="resDisplay">1920 × 1080</div>
+      <div class="export-btns">
+        <button class="btn" id="btnSavePNG" title="Save as PNG (S)">📷 Save PNG</button>
+        <button class="btn" id="btnCopyConfig" title="Copy Config (C)">📋 Copy Config</button>
+      </div>
+      <button class="btn" id="btnGallery" style="width:100%;margin-top:4px" title="Save to Gallery">🖼 Save to Gallery</button>
+    </div>
+  </div>
+
+  <!-- Title Overlay -->
+  <div id="title-overlay">
+    <div class="brand">SMNTC Generative</div>
+    <div class="description" id="descLine">
+      <span class="token" id="descSurface">terrain</span> · <span class="token" id="descVibe">cinematic</span> · <span class="token" id="descPalette">aurora</span>
+    </div>
+    <div class="vfx-summary" id="vfxSummary">grain 12% · glow 40% · vignette 30%</div>
+  </div>
+
+  <!-- Gallery Strip -->
+  <div id="gallery">
+    <div class="gallery-empty" id="galleryEmpty">Press 🎲 to generate — save compositions to gallery</div>
+  </div>
+
+  <!-- Keyboard Hints -->
+  <div id="kb-hint">
+    <kbd>R</kbd> Randomize · <kbd>S</kbd> Save PNG · <kbd>C</kbd> Copy · <kbd>Space</kbd> Panel
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- ================================================================== -->
+  <!-- THREE.JS + INLINE SMNTC SHADER ENGINE                              -->
+  <!-- ================================================================== -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    // ====================================================================
+    // PALETTE DEFINITIONS (normalized RGB, all 13)
+    // ====================================================================
+    const PALETTES = {
+      monochrome: { primary: [0.878,0.878,0.878], accent: [1,1,1],             bg: [0,0,0] },
+      ember:      { primary: [1,0.42,0.21],       accent: [1,0.67,0],           bg: [0.04,0.04,0.04] },
+      arctic:     { primary: [0.533,0.8,1],        accent: [1,1,1],             bg: [0.02,0.02,0.063] },
+      neon:       { primary: [0,1,0.533],          accent: [1,0,1],             bg: [0.04,0.04,0.04] },
+      phantom:    { primary: [0.627,0.627,0.69],   accent: [0.376,0.376,0.627], bg: [0.031,0.031,0.047] },
+      ocean:      { primary: [0,0.467,0.714],      accent: [0,0.706,0.847],     bg: [0.012,0.027,0.118] },
+      sunset:     { primary: [0.969,0.498,0],       accent: [0.839,0.157,0.157], bg: [0.051,0.008,0.031] },
+      matrix:     { primary: [0,1,0.255],          accent: [0,0.561,0.067],     bg: [0,0,0] },
+      vapor:      { primary: [1,0.443,0.808],      accent: [0.004,0.804,0.996], bg: [0.039,0,0.071] },
+      gold:       { primary: [1,0.843,0],          accent: [0.855,0.647,0.125], bg: [0.039,0.031,0] },
+      infrared:   { primary: [1,0,0.333],          accent: [1,0.4,0],           bg: [0.039,0,0.02] },
+      aurora:     { primary: [0.263,0.710,0.506],  accent: [0.447,0.537,0.855], bg: [0.008,0.031,0.063] },
+      midnight:   { primary: [0.753,0.753,0.784],  accent: [0.29,0.435,0.647],  bg: [0.039,0.055,0.102] },
+    };
+    const PALETTE_NAMES = Object.keys(PALETTES);
+
+    // ====================================================================
+    // SURFACE DEFINITIONS (all 8)
+    // ====================================================================
+    const SURFACES = {
+      topographic: { mode: 0, noiseScale: 1.0 },
+      crystalline: { mode: 1, noiseScale: 2.5 },
+      fluid:       { mode: 2, noiseScale: 0.6 },
+      glitch:      { mode: 3, noiseScale: 3.0 },
+      organic:     { mode: 4, noiseScale: 0.8 },
+      terrain:     { mode: 5, noiseScale: 1.5 },
+      plasma:      { mode: 6, noiseScale: 2.0 },
+      wave:        { mode: 7, noiseScale: 0.5 },
+    };
+    const SURFACE_NAMES = Object.keys(SURFACES);
+
+    // ====================================================================
+    // VIBE DEFINITIONS (all 9)
+    // ====================================================================
+    const VIBES = {
+      stable:    { frequency: 0.1,  amplitude: 0.02, noiseSpeed: 0.05 },
+      calm:      { frequency: 0.5,  amplitude: 0.08, noiseSpeed: 0.15 },
+      agitated:  { frequency: 2.5,  amplitude: 0.20, noiseSpeed: 0.60 },
+      chaotic:   { frequency: 5.0,  amplitude: 0.40, noiseSpeed: 1.50 },
+      breathing: { frequency: 0.08, amplitude: 0.05, noiseSpeed: 0.03 },
+      pulse:     { frequency: 1.2,  amplitude: 0.15, noiseSpeed: 0.30 },
+      drift:     { frequency: 0.3,  amplitude: 0.06, noiseSpeed: 0.10 },
+      storm:     { frequency: 4.0,  amplitude: 0.35, noiseSpeed: 1.20 },
+      cinematic: { frequency: 0.2,  amplitude: 0.12, noiseSpeed: 0.08 },
+    };
+    const VIBE_NAMES = Object.keys(VIBES);
+
+    // ====================================================================
+    // MULBERRY32 SEEDED PRNG
+    // ====================================================================
+    function mulberry32(seed) {
+      return function() {
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    // ====================================================================
+    // SPRING PHYSICS
+    // ====================================================================
+    class Spring {
+      constructor(value, stiffness = 80, damping = 12) {
+        this.value = value;
+        this.target = value;
+        this.velocity = 0;
+        this.stiffness = stiffness;
+        this.damping = damping;
+      }
+      set(target) { this.target = target; }
+      snap(value) { this.value = value; this.target = value; this.velocity = 0; }
+      tick(dt) {
+        const safeDt = Math.min(dt, 0.064);
+        const dx = this.target - this.value;
+        const springForce = dx * this.stiffness;
+        const dampForce = -this.velocity * this.damping;
+        this.velocity += (springForce + dampForce) * safeDt;
+        this.value += this.velocity * safeDt;
+        if (Math.abs(this.velocity) < 0.0005 && Math.abs(dx) < 0.0005) {
+          this.value = this.target;
+          this.velocity = 0;
+        }
+        return this.value;
+      }
+    }
+
+    // ====================================================================
+    // STATE
+    // ====================================================================
+    let currentSeed = 0;
+    let currentSurface = 'topographic';
+    let currentVibe = 'calm';
+    let currentPalette = 'monochrome';
+    let paramIntensity = 1.0;
+    let paramSpeed = 1.0;
+    let paramAngle = 0;
+    let paramGrain = 0;
+    let paramGlow = 0;
+    let paramChromatic = 0;
+    let paramVignette = 0;
+
+    const gallery = []; // { seed, config, dataUrl }
+    const MAX_GALLERY = 10;
+
+    const springs = {
+      frequency:   new Spring(0.5),
+      amplitude:   new Spring(0.08),
+      noiseScale:  new Spring(1.0),
+      noiseSpeed:  new Spring(0.15),
+      surfaceMode: new Spring(0, 120, 14),
+      primaryR:    new Spring(0.878),
+      primaryG:    new Spring(0.878),
+      primaryB:    new Spring(0.878),
+      accentR:     new Spring(1),
+      accentG:     new Spring(1),
+      accentB:     new Spring(1),
+      bgR:         new Spring(0),
+      bgG:         new Spring(0),
+      bgB:         new Spring(0),
+      grain:       new Spring(0),
+      glow:        new Spring(0),
+      chromatic:   new Spring(0),
+      vignette:    new Spring(0),
+      intensity:   new Spring(1.0),
+      speed:       new Spring(1.0),
+      angle:       new Spring(0),
+    };
+
+    // ====================================================================
+    // VERTEX SHADER — All 8 Surfaces, angle rotation, spring physics
+    // ====================================================================
+    const vertexShader = /* glsl */ `
+precision highp float;
+
+uniform float uTime;
+uniform float uSurfaceMode;
+uniform float uFrequency;
+uniform float uAmplitude;
+uniform float uNoiseScale;
+uniform float uNoiseSpeed;
+uniform float uIntensity;
+uniform float uSpeed;
+uniform float uAngle;
+
+varying vec3  vNormal;
+varying vec3  vPosition;
+varying float vDisplacement;
+varying vec2  vUv;
+
+// ── Simplex 3D Noise ──
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 permute(vec4 x){return mod289(((x*34.0)+10.0)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+
+float snoise(vec3 v){
+  const vec2 C=vec2(1.0/6.0,1.0/3.0);
+  const vec4 D=vec4(0.0,0.5,1.0,2.0);
+  vec3 i=floor(v+dot(v,C.yyy));
+  vec3 x0=v-i+dot(i,C.xxx);
+  vec3 g=step(x0.yzx,x0.xyz);
+  vec3 l=1.0-g;
+  vec3 i1=min(g.xyz,l.zxy);
+  vec3 i2=max(g.xyz,l.zxy);
+  vec3 x1=x0-i1+C.xxx;
+  vec3 x2=x0-i2+C.yyy;
+  vec3 x3=x0-D.yyy;
+  i=mod289(i);
+  vec4 p=permute(permute(permute(
+    i.z+vec4(0.0,i1.z,i2.z,1.0))
+    +i.y+vec4(0.0,i1.y,i2.y,1.0))
+    +i.x+vec4(0.0,i1.x,i2.x,1.0));
+  float n_=0.142857142857;
+  vec3 ns=n_*D.wyz-D.xzx;
+  vec4 j=p-49.0*floor(p*ns.z*ns.z);
+  vec4 x_=floor(j*ns.z);
+  vec4 y_=floor(j-7.0*x_);
+  vec4 xv=x_*ns.x+ns.yyyy;
+  vec4 yv=y_*ns.x+ns.yyyy;
+  vec4 h=1.0-abs(xv)-abs(yv);
+  vec4 b0=vec4(xv.xy,yv.xy);
+  vec4 b1=vec4(xv.zw,yv.zw);
+  vec4 s0=floor(b0)*2.0+1.0;
+  vec4 s1=floor(b1)*2.0+1.0;
+  vec4 sh=-step(h,vec4(0.0));
+  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;
+  vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+  vec3 p0=vec3(a0.xy,h.x);
+  vec3 p1=vec3(a0.zw,h.y);
+  vec3 p2=vec3(a1.xy,h.z);
+  vec3 p3=vec3(a1.zw,h.w);
+  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+  p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+  vec4 m=max(0.5-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);
+  m=m*m;
+  return 105.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+}
+
+// ── Voronoi ──
+float voronoi(vec3 p){
+  vec3 i_st=floor(p);vec3 f_st=fract(p);
+  float md=1.0;
+  for(int z=-1;z<=1;z++) for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+    vec3 nb=vec3(float(x),float(y),float(z));
+    vec3 pt=vec3(
+      fract(sin(dot(i_st+nb,vec3(12.9898,78.233,45.164)))*43758.5453),
+      fract(sin(dot(i_st+nb,vec3(93.989,67.345,12.456)))*28461.2534),
+      fract(sin(dot(i_st+nb,vec3(43.332,93.532,65.123)))*63728.1927));
+    md=min(md,length(nb+pt-f_st));
+  }
+  return md;
+}
+
+// ── 8 Surface Displacement Functions ──
+float topographicDisp(vec3 p,float t){
+  float w1=sin(p.x*uFrequency+t*0.8)*0.5;
+  float w2=sin(p.y*uFrequency*1.3+t*0.6)*0.3;
+  float w3=cos(p.x*uFrequency*0.7+p.y*uFrequency*0.9+t*1.1)*0.2;
+  return(w1+w2+w3)*uAmplitude*uIntensity;
+}
+float crystallineDisp(vec3 p,float t){
+  float v=voronoi(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  return floor(v*8.0)/8.0*uAmplitude*uIntensity;
+}
+float fluidDisp(vec3 p,float t){
+  float n1=snoise(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float n2=snoise(p*uNoiseScale*2.0+vec3(t*uNoiseSpeed*0.5));
+  return(n1*0.6+n2*0.4)*uAmplitude*uIntensity;
+}
+float glitchDisp(vec3 p,float t){
+  float base=snoise(p*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float q=floor(base*4.0+0.5)/4.0;
+  float burst=step(0.92,fract(sin(dot(p.xy+t,vec2(12.9898,78.233)))*43758.5453));
+  return(q+burst*0.3)*uAmplitude*uIntensity;
+}
+float organicDisp(vec3 p,float t){
+  float w1=snoise(p*uNoiseScale*0.5+vec3(t*uNoiseSpeed*0.3));
+  float w2=snoise(p*uNoiseScale*0.5+vec3(0.0,t*uNoiseSpeed*0.4,0.0));
+  vec3 wp=p+vec3(w1,w2,0.0)*0.5;
+  float n=snoise(wp*uNoiseScale+vec3(0.0,0.0,t*uNoiseSpeed));
+  float n2=snoise(wp*uNoiseScale*1.5+vec3(t*uNoiseSpeed*0.7));
+  return(n*0.7+n2*0.3)*uAmplitude*uIntensity;
+}
+float terrainDisp(vec3 p,float t){
+  float total=0.0,amp=1.0,freq=1.0,weight=1.0;
+  for(int i=0;i<5;i++){
+    float n=abs(snoise(p*uNoiseScale*freq+vec3(0.0,0.0,t*uNoiseSpeed*0.2)));
+    n=1.0-n;n=n*n;n*=weight;
+    weight=clamp(n*2.0,0.0,1.0);
+    total+=n*amp;freq*=2.1;amp*=0.5;
+  }
+  return total*uAmplitude*uIntensity*0.5;
+}
+float plasmaDisp(vec3 p,float t){
+  float n1=sin(p.x*uNoiseScale*1.5+t*uNoiseSpeed*2.0);
+  float n2=sin(p.y*uNoiseScale*1.5+t*uNoiseSpeed*1.5);
+  float n3=snoise(p*uNoiseScale+vec3(t*uNoiseSpeed));
+  float n4=sin((p.x+p.y)*uNoiseScale+t*uNoiseSpeed*3.0)*0.5;
+  return(n1+n2+n3+n4)*0.25*uAmplitude*uIntensity;
+}
+float waveDisp(vec3 p,float t){
+  float w=0.0;
+  w+=sin(p.x*uFrequency*2.0+t*1.5)*0.4;
+  w+=sin(p.x*uFrequency*0.8-p.y*uFrequency*0.5+t*1.2)*0.3;
+  w+=sin(p.y*uFrequency*1.5+t*0.9)*0.2;
+  w+=sin((p.x+p.y)*uFrequency*0.6+t*2.0)*0.1;
+  w+=snoise(p*uNoiseScale*0.5+vec3(0.0,0.0,t*uNoiseSpeed*0.5))*0.15;
+  return w*uAmplitude*uIntensity;
+}
+
+float getDisplacement(vec3 pos,float t){
+  float ca=cos(uAngle),sa=sin(uAngle);
+  vec3 rp=vec3(pos.x*ca-pos.y*sa,pos.x*sa+pos.y*ca,pos.z);
+  if(uSurfaceMode<0.5) return topographicDisp(rp,t);
+  if(uSurfaceMode<1.5) return crystallineDisp(rp,t);
+  if(uSurfaceMode<2.5) return fluidDisp(rp,t);
+  if(uSurfaceMode<3.5) return glitchDisp(rp,t);
+  if(uSurfaceMode<4.5) return organicDisp(rp,t);
+  if(uSurfaceMode<5.5) return terrainDisp(rp,t);
+  if(uSurfaceMode<6.5) return plasmaDisp(rp,t);
+  return waveDisp(rp,t);
+}
+
+vec3 computeNormal(vec3 pos,vec3 norm,float t){
+  float eps=0.01;
+  float dX=getDisplacement(pos+vec3(eps,0,0),t)-getDisplacement(pos-vec3(eps,0,0),t);
+  float dZ=getDisplacement(pos+vec3(0,0,eps),t)-getDisplacement(pos-vec3(0,0,eps),t);
+  return normalize(norm+vec3(-dX/(2.0*eps),1.0,-dZ/(2.0*eps)));
+}
+
+void main(){
+  float t=mod(uTime*uSpeed,6283.1853);
+  vec3 pos=position;
+  float disp=getDisplacement(pos,t);
+  vec3 displaced=pos+normal*disp;
+  vNormal=normalize(normalMatrix*computeNormal(pos,normal,t));
+  vPosition=(modelViewMatrix*vec4(displaced,1.0)).xyz;
+  vDisplacement=disp;
+  vUv=uv;
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(displaced,1.0);
+}
+`;
+
+    // ====================================================================
+    // FRAGMENT SHADER — Full VFX (grain, glow, chromatic, vignette, blur)
+    // ====================================================================
+    const fragmentShader = /* glsl */ `
+precision highp float;
+
+uniform vec3  uPrimaryColor;
+uniform vec3  uAccentColor;
+uniform vec3  uBackgroundColor;
+uniform float uSurfaceMode;
+uniform float uWireframe;
+uniform float uWireframeWidth;
+uniform float uContourLines;
+uniform float uIntensity;
+uniform float uTime;
+uniform float uGrain;
+uniform float uGlow;
+uniform float uChromatic;
+uniform float uVignette;
+uniform float uBlur;
+
+varying vec3  vNormal;
+varying vec3  vPosition;
+varying float vDisplacement;
+varying vec2  vUv;
+
+float edgeFactor(){
+  vec2 grid=abs(fract(vUv*uContourLines-0.5)-0.5);
+  vec2 dG=fwidth(vUv*uContourLines);
+  vec2 a2=smoothstep(vec2(0.0),dG*uWireframeWidth*1.5,grid);
+  return min(a2.x,a2.y);
+}
+
+float contourFactor(){
+  float sd=vDisplacement*uContourLines*10.0;
+  float line=abs(fract(sd)-0.5);
+  return smoothstep(0.0,fwidth(sd)*1.5,line);
+}
+
+vec3 lighting(vec3 base){
+  vec3 ld=normalize(vec3(0.5,1.0,0.8));
+  vec3 vd=normalize(-vPosition);
+  vec3 n=normalize(vNormal);
+  float ambient=0.15;
+  float diff=max(dot(n,ld),0.0);
+  vec3 halfDir=normalize(ld+vd);
+  float spec=pow(max(dot(n,halfDir),0.0),64.0)*0.3;
+  float rim=pow(1.0-max(dot(vd,n),0.0),3.0)*0.2;
+  vec3 fillDir=normalize(vec3(-0.3,0.5,-0.6));
+  float fill=max(dot(n,fillDir),0.0)*0.15;
+  return base*(ambient+diff*0.7+fill)+vec3(spec+rim);
+}
+
+float filmGrain(vec2 uv,float t){
+  float n1=fract(sin(dot(uv*1000.0+t*100.0,vec2(12.9898,78.233)))*43758.5453);
+  float n2=fract(sin(dot(uv*800.0-t*50.0,vec2(63.7264,10.873)))*28462.6453);
+  return(n1*0.5+n2*0.5)*2.0-1.0;
+}
+
+float vignetteEffect(vec2 uv){
+  vec2 c=uv-0.5;
+  return 1.0-smoothstep(0.3,0.85,length(c));
+}
+
+void main(){
+  float blend=smoothstep(-0.15,0.15,vDisplacement)*uIntensity;
+  vec3 base=mix(uPrimaryColor,uAccentColor,blend);
+  vec4 fc;
+
+  if(uWireframe>0.5){
+    float c=contourFactor();
+    float e=edgeFactor();
+    float lf=min(c,e);
+    vec3 lc=lighting(base);
+    if(uGlow>0.01){
+      float gf=(1.0-lf)*uGlow;
+      lc+=base*gf*0.5+uAccentColor*gf*0.3;
+    }
+    float alpha=1.0-lf;
+    if(alpha<0.05) discard;
+    fc=vec4(lc,alpha);
+  } else {
+    vec3 lc=lighting(base);
+    if(uGlow>0.01){
+      float br=dot(lc,vec3(0.299,0.587,0.114));
+      lc+=lc*br*uGlow*0.4;
+    }
+    fc=vec4(lc,1.0);
+  }
+
+  if(uChromatic>0.001){
+    vec2 center=vUv-0.5;
+    float dist=length(center);
+    float ao=dist*uChromatic*0.02;
+    float rS=smoothstep(-0.15,0.15,vDisplacement+ao)*uIntensity;
+    float bS=smoothstep(-0.15,0.15,vDisplacement-ao)*uIntensity;
+    vec3 rC=mix(uPrimaryColor,uAccentColor,rS);
+    vec3 bC=mix(uPrimaryColor,uAccentColor,bS);
+    fc.r=mix(fc.r,rC.r*1.1,uChromatic*0.5);
+    fc.b=mix(fc.b,bC.b*1.1,uChromatic*0.5);
+  }
+
+  if(uGrain>0.001){
+    fc.rgb+=filmGrain(vUv,uTime)*uGrain*0.15;
+  }
+
+  if(uVignette>0.001){
+    fc.rgb*=mix(1.0,vignetteEffect(vUv),uVignette);
+  }
+
+  if(uBlur>0.001){
+    float depth=length(vPosition);
+    float bf=smoothstep(1.0,5.0,depth)*uBlur;
+    vec3 blurred=mix(fc.rgb,vec3(dot(fc.rgb,vec3(0.299,0.587,0.114))),bf*0.3);
+    fc.rgb=mix(fc.rgb,blurred,bf);
+  }
+
+  gl_FragColor=fc;
+}
+`;
+
+    // ====================================================================
+    // RENDERER SETUP
+    // ====================================================================
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: false,
+      preserveDrawingBuffer: true,   // Required for canvas capture / Save PNG
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(new THREE.Color(0, 0, 0), 1);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 100);
+    camera.position.set(0, 2.2, 4.0);
+    camera.lookAt(0, 0, 0);
+
+    const geometry = new THREE.PlaneGeometry(6, 6, 200, 200);
+
+    const uniforms = {
+      uTime:           { value: 0 },
+      uSurfaceMode:    { value: 0 },
+      uFrequency:      { value: 0.5 },
+      uAmplitude:      { value: 0.08 },
+      uNoiseScale:     { value: 1.0 },
+      uNoiseSpeed:     { value: 0.15 },
+      uIntensity:      { value: 1.0 },
+      uSpeed:          { value: 1.0 },
+      uContourLines:   { value: 16 },
+      uAngle:          { value: 0 },
+      uPrimaryColor:   { value: new THREE.Vector3(0.878, 0.878, 0.878) },
+      uAccentColor:    { value: new THREE.Vector3(1, 1, 1) },
+      uBackgroundColor:{ value: new THREE.Vector3(0, 0, 0) },
+      uWireframe:      { value: 1.0 },
+      uWireframeWidth: { value: 1.0 },
+      uGrain:          { value: 0 },
+      uGlow:           { value: 0 },
+      uChromatic:      { value: 0 },
+      uVignette:       { value: 0 },
+      uBlur:           { value: 0 },
+    };
+
+    const material = new THREE.ShaderMaterial({
+      vertexShader,
+      fragmentShader,
+      uniforms,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      extensions: { derivatives: true },
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add(mesh);
+
+    // ====================================================================
+    // RESIZE
+    // ====================================================================
+    function resize() {
+      const w = innerWidth, h = innerHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      document.getElementById('resDisplay').textContent = `${w} × ${h}`;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ====================================================================
+    // APPLY FUNCTIONS (spring-driven)
+    // ====================================================================
+    function applySurface(name) {
+      currentSurface = name;
+      const s = SURFACES[name];
+      if (!s) return;
+      springs.surfaceMode.set(s.mode);
+      springs.noiseScale.set(s.noiseScale);
+      document.getElementById('surfValue').textContent = name;
+      updateDescription();
+    }
+
+    function applyVibe(name) {
+      currentVibe = name;
+      const v = VIBES[name];
+      if (!v) return;
+      springs.frequency.set(v.frequency);
+      springs.amplitude.set(v.amplitude);
+      springs.noiseSpeed.set(v.noiseSpeed);
+      document.getElementById('vibeValue').textContent = name;
+      updateDescription();
+    }
+
+    function applyPalette(name) {
+      currentPalette = name;
+      const p = PALETTES[name];
+      if (!p) return;
+      springs.primaryR.set(p.primary[0]);
+      springs.primaryG.set(p.primary[1]);
+      springs.primaryB.set(p.primary[2]);
+      springs.accentR.set(p.accent[0]);
+      springs.accentG.set(p.accent[1]);
+      springs.accentB.set(p.accent[2]);
+      springs.bgR.set(p.bg[0]);
+      springs.bgG.set(p.bg[1]);
+      springs.bgB.set(p.bg[2]);
+      document.getElementById('palValue').textContent = name;
+      updateDescription();
+    }
+
+    function applyParams(intensity, speed, angle) {
+      paramIntensity = intensity;
+      paramSpeed = speed;
+      paramAngle = angle;
+      springs.intensity.set(intensity);
+      springs.speed.set(speed);
+      springs.angle.set(angle * Math.PI / 180);
+      updateSlider('sliderIntensity', 'valIntensity', intensity, v => v.toFixed(2));
+      updateSlider('sliderSpeed', 'valSpeed', speed, v => v.toFixed(2));
+      updateSlider('sliderAngle', 'valAngle', angle, v => Math.round(v) + '°');
+    }
+
+    function applyEffects(grain, glow, chromatic, vignette) {
+      paramGrain = grain;
+      paramGlow = glow;
+      paramChromatic = chromatic;
+      paramVignette = vignette;
+      springs.grain.set(grain);
+      springs.glow.set(glow);
+      springs.chromatic.set(chromatic);
+      springs.vignette.set(vignette);
+      updateSlider('sliderGrain', 'valGrain', grain, v => Math.round(v * 100) + '%');
+      updateSlider('sliderGlow', 'valGlow', glow, v => Math.round(v * 100) + '%');
+      updateSlider('sliderChromatic', 'valChromatic', chromatic, v => Math.round(v * 100) + '%');
+      updateSlider('sliderVignette', 'valVignette', vignette, v => Math.round(v * 100) + '%');
+      updateVFXSummary();
+    }
+
+    function updateSlider(sliderId, valueId, val, fmt) {
+      const slider = document.getElementById(sliderId);
+      const display = document.getElementById(valueId);
+      slider.value = val;
+      display.textContent = fmt(val);
+    }
+
+    // ====================================================================
+    // SEED SYSTEM
+    // ====================================================================
+    function applySeed(seed) {
+      currentSeed = seed;
+      const rng = mulberry32(seed);
+
+      // Pick tokens
+      const surfIdx = Math.floor(rng() * SURFACE_NAMES.length);
+      const vibeIdx = Math.floor(rng() * VIBE_NAMES.length);
+      const palIdx  = Math.floor(rng() * PALETTE_NAMES.length);
+
+      // Generate parameters
+      const intensity = 0.3 + rng() * 1.4;    // 0.3 – 1.7
+      const speed     = 0.2 + rng() * 3.0;    // 0.2 – 3.2
+      const angle     = Math.floor(rng() * 360);
+
+      // Generate effects
+      const grain     = rng() * 0.6;          // 0 – 0.6
+      const glow      = rng() * 1.2;          // 0 – 1.2
+      const chromatic = rng() * 0.5;          // 0 – 0.5
+      const vignette  = rng() * 0.8;          // 0 – 0.8
+
+      // Apply everything
+      applySurface(SURFACE_NAMES[surfIdx]);
+      applyVibe(VIBE_NAMES[vibeIdx]);
+      applyPalette(PALETTE_NAMES[palIdx]);
+      applyParams(intensity, speed, angle);
+      applyEffects(grain, glow, chromatic, vignette);
+
+      // Update seed display
+      document.getElementById('seedDisplay').textContent = '#' + seed;
+
+      // Update URL hash
+      history.replaceState(null, '', '#seed=' + seed);
+    }
+
+    function randomize() {
+      const seed = Math.floor(Math.random() * 99999) + 1;
+      applySeed(seed);
+    }
+
+    // ====================================================================
+    // DESCRIPTION & VFX SUMMARY
+    // ====================================================================
+    function updateDescription() {
+      document.getElementById('descSurface').textContent = currentSurface;
+      document.getElementById('descVibe').textContent = currentVibe;
+      document.getElementById('descPalette').textContent = currentPalette;
+      updateVFXSummary();
+    }
+
+    function updateVFXSummary() {
+      const parts = [];
+      if (paramGrain > 0.01)     parts.push('grain ' + Math.round(paramGrain * 100) + '%');
+      if (paramGlow > 0.01)      parts.push('glow ' + Math.round(paramGlow * 100) + '%');
+      if (paramChromatic > 0.01) parts.push('chroma ' + Math.round(paramChromatic * 100) + '%');
+      if (paramVignette > 0.01)  parts.push('vignette ' + Math.round(paramVignette * 100) + '%');
+      document.getElementById('vfxSummary').textContent = parts.length ? parts.join(' · ') : 'no effects';
+    }
+
+    // ====================================================================
+    // CONFIG OBJECT
+    // ====================================================================
+    function getConfig() {
+      return {
+        seed: currentSeed,
+        surface: currentSurface,
+        vibe: currentVibe,
+        palette: currentPalette,
+        intensity: Math.round(paramIntensity * 100) / 100,
+        speed: Math.round(paramSpeed * 100) / 100,
+        angle: Math.round(paramAngle),
+        grain: Math.round(paramGrain * 100) / 100,
+        glow: Math.round(paramGlow * 100) / 100,
+        chromatic: Math.round(paramChromatic * 100) / 100,
+        vignette: Math.round(paramVignette * 100) / 100,
+      };
+    }
+
+    function restoreConfig(cfg) {
+      currentSeed = cfg.seed || 0;
+      document.getElementById('seedDisplay').textContent = '#' + currentSeed;
+      applySurface(cfg.surface);
+      applyVibe(cfg.vibe);
+      applyPalette(cfg.palette);
+      applyParams(cfg.intensity, cfg.speed, cfg.angle);
+      applyEffects(cfg.grain, cfg.glow, cfg.chromatic, cfg.vignette);
+      history.replaceState(null, '', '#seed=' + currentSeed);
+    }
+
+    // ====================================================================
+    // EXPORT: SAVE PNG
+    // ====================================================================
+    function savePNG() {
+      renderer.render(scene, camera);
+      const link = document.createElement('a');
+      link.download = `smntc-gen-${currentSeed || 'custom'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('PNG saved');
+    }
+
+    // ====================================================================
+    // EXPORT: COPY CONFIG
+    // ====================================================================
+    async function copyConfig() {
+      const json = JSON.stringify(getConfig(), null, 2);
+      try {
+        await navigator.clipboard.writeText(json);
+        showToast('Config copied to clipboard');
+      } catch {
+        showToast('Copy failed — check permissions');
+      }
+    }
+
+    // ====================================================================
+    // GALLERY
+    // ====================================================================
+    function saveToGallery() {
+      renderer.render(scene, camera);
+
+      // Create a smaller thumbnail
+      const thumbCanvas = document.createElement('canvas');
+      thumbCanvas.width = 104;
+      thumbCanvas.height = 104;
+      const ctx = thumbCanvas.getContext('2d');
+      // Center crop
+      const cw = canvas.width, ch = canvas.height;
+      const size = Math.min(cw, ch);
+      const sx = (cw - size) / 2, sy = (ch - size) / 2;
+      ctx.drawImage(canvas, sx, sy, size, size, 0, 0, 104, 104);
+      const dataUrl = thumbCanvas.toDataURL('image/jpeg', 0.7);
+
+      const entry = { seed: currentSeed, config: getConfig(), dataUrl };
+
+      // Prepend newest on left
+      gallery.unshift(entry);
+      if (gallery.length > MAX_GALLERY) gallery.pop();
+
+      renderGallery();
+      showToast('Saved to gallery');
+    }
+
+    function renderGallery() {
+      const container = document.getElementById('gallery');
+      container.innerHTML = '';
+
+      if (gallery.length === 0) {
+        container.innerHTML = '<div class="gallery-empty" id="galleryEmpty">Press 🎲 to generate — save compositions to gallery</div>';
+        return;
+      }
+
+      gallery.forEach((entry, i) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'gallery-thumb' + (entry.seed === currentSeed ? ' active' : '');
+        thumb.style.backgroundImage = `url(${entry.dataUrl})`;
+        thumb.title = `Seed #${entry.seed}`;
+        thumb.addEventListener('click', () => {
+          restoreConfig(entry.config);
+          renderGallery();
+        });
+        container.appendChild(thumb);
+      });
+    }
+
+    // ====================================================================
+    // TOAST
+    // ====================================================================
+    let toastTimeout = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => el.classList.remove('show'), 2000);
+    }
+
+    // ====================================================================
+    // PANEL TOGGLE
+    // ====================================================================
+    let panelVisible = true;
+    function togglePanel() {
+      panelVisible = !panelVisible;
+      document.getElementById('panel').classList.toggle('hidden', !panelVisible);
+    }
+
+    // ====================================================================
+    // CYCLE HELPERS
+    // ====================================================================
+    function cycleSurface(dir) {
+      let idx = SURFACE_NAMES.indexOf(currentSurface);
+      idx = (idx + dir + SURFACE_NAMES.length) % SURFACE_NAMES.length;
+      applySurface(SURFACE_NAMES[idx]);
+    }
+    function cycleVibe(dir) {
+      let idx = VIBE_NAMES.indexOf(currentVibe);
+      idx = (idx + dir + VIBE_NAMES.length) % VIBE_NAMES.length;
+      applyVibe(VIBE_NAMES[idx]);
+    }
+    function cyclePalette(dir) {
+      let idx = PALETTE_NAMES.indexOf(currentPalette);
+      idx = (idx + dir + PALETTE_NAMES.length) % PALETTE_NAMES.length;
+      applyPalette(PALETTE_NAMES[idx]);
+    }
+
+    // ====================================================================
+    // WIRE UP UI
+    // ====================================================================
+
+    // Randomize
+    document.getElementById('btnRandomize').addEventListener('click', randomize);
+
+    // Cycle buttons
+    document.getElementById('surfPrev').addEventListener('click', () => cycleSurface(-1));
+    document.getElementById('surfNext').addEventListener('click', () => cycleSurface(1));
+    document.getElementById('vibePrev').addEventListener('click', () => cycleVibe(-1));
+    document.getElementById('vibeNext').addEventListener('click', () => cycleVibe(1));
+    document.getElementById('palPrev').addEventListener('click', () => cyclePalette(-1));
+    document.getElementById('palNext').addEventListener('click', () => cyclePalette(1));
+
+    // Sliders — parameters
+    document.getElementById('sliderIntensity').addEventListener('input', e => {
+      paramIntensity = parseFloat(e.target.value);
+      springs.intensity.set(paramIntensity);
+      document.getElementById('valIntensity').textContent = paramIntensity.toFixed(2);
+    });
+    document.getElementById('sliderSpeed').addEventListener('input', e => {
+      paramSpeed = parseFloat(e.target.value);
+      springs.speed.set(paramSpeed);
+      document.getElementById('valSpeed').textContent = paramSpeed.toFixed(2);
+    });
+    document.getElementById('sliderAngle').addEventListener('input', e => {
+      paramAngle = parseFloat(e.target.value);
+      springs.angle.set(paramAngle * Math.PI / 180);
+      document.getElementById('valAngle').textContent = Math.round(paramAngle) + '°';
+    });
+
+    // Sliders — effects
+    document.getElementById('sliderGrain').addEventListener('input', e => {
+      paramGrain = parseFloat(e.target.value);
+      springs.grain.set(paramGrain);
+      document.getElementById('valGrain').textContent = Math.round(paramGrain * 100) + '%';
+      updateVFXSummary();
+    });
+    document.getElementById('sliderGlow').addEventListener('input', e => {
+      paramGlow = parseFloat(e.target.value);
+      springs.glow.set(paramGlow);
+      document.getElementById('valGlow').textContent = Math.round(paramGlow * 100) + '%';
+      updateVFXSummary();
+    });
+    document.getElementById('sliderChromatic').addEventListener('input', e => {
+      paramChromatic = parseFloat(e.target.value);
+      springs.chromatic.set(paramChromatic);
+      document.getElementById('valChromatic').textContent = Math.round(paramChromatic * 100) + '%';
+      updateVFXSummary();
+    });
+    document.getElementById('sliderVignette').addEventListener('input', e => {
+      paramVignette = parseFloat(e.target.value);
+      springs.vignette.set(paramVignette);
+      document.getElementById('valVignette').textContent = Math.round(paramVignette * 100) + '%';
+      updateVFXSummary();
+    });
+
+    // Export buttons
+    document.getElementById('btnSavePNG').addEventListener('click', savePNG);
+    document.getElementById('btnCopyConfig').addEventListener('click', copyConfig);
+    document.getElementById('btnGallery').addEventListener('click', saveToGallery);
+
+    // ====================================================================
+    // KEYBOARD SHORTCUTS
+    // ====================================================================
+    document.addEventListener('keydown', e => {
+      // Ignore if typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      switch (e.key.toLowerCase()) {
+        case 'r': randomize(); break;
+        case 's': e.preventDefault(); savePNG(); break;
+        case 'c': e.preventDefault(); copyConfig(); break;
+        case ' ': e.preventDefault(); togglePanel(); break;
+      }
+    });
+
+    // ====================================================================
+    // ANIMATION LOOP
+    // ====================================================================
+    const clock = new THREE.Clock();
+    const clearColor = new THREE.Color();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const elapsed = clock.getElapsedTime();
+
+      // Tick all springs
+      for (const s of Object.values(springs)) s.tick(dt);
+
+      // Push spring values into uniforms
+      uniforms.uTime.value         = elapsed;
+      uniforms.uSurfaceMode.value  = springs.surfaceMode.value;
+      uniforms.uFrequency.value    = springs.frequency.value;
+      uniforms.uAmplitude.value    = springs.amplitude.value;
+      uniforms.uNoiseScale.value   = springs.noiseScale.value;
+      uniforms.uNoiseSpeed.value   = springs.noiseSpeed.value;
+      uniforms.uIntensity.value    = springs.intensity.value;
+      uniforms.uSpeed.value        = springs.speed.value;
+      uniforms.uAngle.value        = springs.angle.value;
+      uniforms.uGrain.value        = springs.grain.value;
+      uniforms.uGlow.value         = springs.glow.value;
+      uniforms.uChromatic.value    = springs.chromatic.value;
+      uniforms.uVignette.value     = springs.vignette.value;
+
+      uniforms.uPrimaryColor.value.set(
+        springs.primaryR.value, springs.primaryG.value, springs.primaryB.value
+      );
+      uniforms.uAccentColor.value.set(
+        springs.accentR.value, springs.accentG.value, springs.accentB.value
+      );
+      uniforms.uBackgroundColor.value.set(
+        springs.bgR.value, springs.bgG.value, springs.bgB.value
+      );
+
+      clearColor.setRGB(springs.bgR.value, springs.bgG.value, springs.bgB.value);
+      renderer.setClearColor(clearColor, 1);
+
+      renderer.render(scene, camera);
+    }
+
+    // ====================================================================
+    // INIT — Read seed from URL hash or randomize
+    // ====================================================================
+    function init() {
+      const hash = location.hash;
+      const match = hash.match(/seed=(\d+)/);
+      if (match) {
+        applySeed(parseInt(match[1], 10));
+      } else {
+        randomize();
+      }
+    }
+
+    clock.start();
+    animate();
+    init();
+
+    // Thermal guard
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) clock.stop(); else clock.start();
+    });
+  </script>
+</body>
+</html>

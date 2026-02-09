@@ -7,15 +7,15 @@
   "properties": {
     "surface": {
       "type": "string",
-      "enum": ["topographic", "crystalline", "fluid", "glitch"],
+      "enum": ["topographic", "crystalline", "fluid", "glitch", "organic", "terrain", "plasma", "wave"],
       "default": "topographic",
-      "description": "Visual displacement pattern. topographic = contour lines (sine), crystalline = faceted clusters (Voronoi), fluid = organic flow (Simplex), glitch = quantized random."
+      "description": "Visual displacement pattern. topographic = contour lines (sine), crystalline = faceted clusters (Voronoi), fluid = organic flow (Simplex), glitch = quantized random, organic = domain-warped biological membrane, terrain = ridged multi-fractal landscape, plasma = swirling energy FBM, wave = Gerstner ocean waves."
     },
     "vibe": {
       "type": "string",
-      "enum": ["stable", "calm", "agitated", "chaotic"],
+      "enum": ["stable", "calm", "agitated", "chaotic", "breathing", "pulse", "drift", "storm", "cinematic"],
       "default": "calm",
-      "description": "Motion character. stable = near-static breathing, calm = slow rhythmic, agitated = high-frequency erratic, chaotic = stochastic bursts."
+      "description": "Motion character. stable = near-static breathing, calm = slow rhythmic, agitated = high-frequency erratic, chaotic = stochastic bursts, breathing = ultra-slow meditation, pulse = beat-synchronized, drift = languid horizontal, storm = violent turbulence, cinematic = dramatic slow-motion."
     },
     "reactivity": {
       "type": "string",
@@ -31,9 +31,9 @@
     },
     "palette": {
       "type": "string",
-      "enum": ["monochrome", "ember", "arctic", "neon", "phantom"],
+      "enum": ["monochrome", "ember", "arctic", "neon", "phantom", "ocean", "sunset", "matrix", "vapor", "gold", "infrared", "aurora", "midnight"],
       "default": "monochrome",
-      "description": "Color scheme. monochrome = white/black, ember = warm orange, arctic = cool blue, neon = green/magenta, phantom = grey-purple."
+      "description": "Color scheme. monochrome = white/black, ember = warm orange, arctic = cool blue, neon = green/magenta, phantom = grey-purple, ocean = deep blue/teal, sunset = orange-to-purple, matrix = green terminal, vapor = pink/cyan vaporwave, gold = luxury gold, infrared = thermal red/orange, aurora = northern lights green/purple, midnight = navy/silver."
     },
     "wireframe": {
       "type": "boolean",
@@ -65,6 +65,48 @@
       "type": "boolean",
       "default": true,
       "description": "Auto-pause animation when the browser tab is hidden to save battery."
+    },
+    "angle": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360,
+      "default": 0,
+      "description": "Displacement rotation angle in degrees. Rotates the noise sampling direction."
+    },
+    "grain": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0,
+      "description": "Film grain overlay intensity (After Effects-style noise). 0 = none, 1 = heavy grain."
+    },
+    "glow": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2,
+      "default": 0,
+      "description": "Bloom/glow emulation intensity (After Effects Glow effect). 0 = none, 2 = extreme."
+    },
+    "chromatic": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0,
+      "description": "Chromatic aberration strength (Premiere Pro lens distortion). 0 = none, 1 = heavy."
+    },
+    "vignette": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0,
+      "description": "Edge darkening vignette (cinema lens effect). 0 = none, 1 = heavy darkening."
+    },
+    "blur": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0,
+      "description": "Depth-of-field blur simulation. 0 = sharp, 1 = heavy blur at edges."
     }
   },
   "additionalProperties": false,
@@ -83,11 +125,37 @@
       "fidelity": "high"
     },
     {
-      "surface": "crystalline",
-      "vibe": "chaotic",
-      "palette": "ember",
-      "intensity": 1.5,
-      "speed": 2.0
+      "surface": "terrain",
+      "vibe": "cinematic",
+      "palette": "gold",
+      "wireframe": false,
+      "grain": 0.04,
+      "glow": 0.6,
+      "vignette": 0.5,
+      "speed": 0.5
+    },
+    {
+      "surface": "plasma",
+      "vibe": "pulse",
+      "palette": "vapor",
+      "glow": 0.8,
+      "chromatic": 0.2,
+      "grain": 0.05
+    },
+    {
+      "surface": "organic",
+      "vibe": "breathing",
+      "palette": "aurora",
+      "wireframe": false,
+      "intensity": 0.8,
+      "angle": 45
+    },
+    {
+      "surface": "wave",
+      "vibe": "drift",
+      "palette": "ocean",
+      "wireframe": true,
+      "vignette": 0.3
     }
   ]
 }

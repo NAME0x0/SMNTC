@@ -30,26 +30,32 @@ Every SMNTC API accepts this configuration object. All fields are optional with 
 
 ```typescript
 interface SMNTCConfig {
-  surface?: 'topographic' | 'crystalline' | 'fluid' | 'glitch';       // default: 'topographic'
-  vibe?: 'stable' | 'calm' | 'agitated' | 'chaotic';                  // default: 'calm'
+  surface?: 'topographic' | 'crystalline' | 'fluid' | 'glitch' | 'organic' | 'terrain' | 'plasma' | 'wave';       // default: 'topographic'
+  vibe?: 'stable' | 'calm' | 'agitated' | 'chaotic' | 'breathing' | 'pulse' | 'drift' | 'storm' | 'cinematic';    // default: 'calm'
   reactivity?: 'static' | 'magnetic' | 'repel' | 'shockwave';         // default: 'static'
   fidelity?: 'low' | 'medium' | 'high' | 'ultra';                     // default: 'medium'
-  palette?: 'monochrome' | 'ember' | 'arctic' | 'neon' | 'phantom';   // default: 'monochrome'
+  palette?: 'monochrome' | 'ember' | 'arctic' | 'neon' | 'phantom' | 'ocean' | 'sunset' | 'matrix' | 'vapor' | 'gold' | 'infrared' | 'aurora' | 'midnight';   // default: 'monochrome'
   wireframe?: boolean;           // default: true
   intensity?: number;            // range: [0, 2],  default: 1.0
   speed?: number;                // range: [0, 5],  default: 1.0
   contourLines?: number;         // range: [4, 64], default: 16
+  angle?: number;                // range: [0, 360], default: 0 (displacement rotation degrees)
+  grain?: number;                // range: [0, 1],  default: 0 (film grain intensity)
+  glow?: number;                 // range: [0, 2],  default: 0 (bloom/glow strength)
+  chromatic?: number;            // range: [0, 1],  default: 0 (chromatic aberration)
+  vignette?: number;             // range: [0, 1],  default: 0 (edge darkening)
+  blur?: number;                 // range: [0, 1],  default: 0 (depth blur simulation)
   thermalGuard?: boolean;        // default: true (pauses when tab hidden)
 }
 ```
 
 ### Valid Token Values (exhaustive)
 
-SURFACES:   topographic, crystalline, fluid, glitch
-VIBES:      stable, calm, agitated, chaotic
+SURFACES:   topographic, crystalline, fluid, glitch, organic, terrain, plasma, wave
+VIBES:      stable, calm, agitated, chaotic, breathing, pulse, drift, storm, cinematic
 REACTIVITIES: static, magnetic, repel, shockwave
 FIDELITIES: low, medium, high, ultra
-PALETTES:   monochrome, ember, arctic, neon, phantom
+PALETTES:   monochrome, ember, arctic, neon, phantom, ocean, sunset, matrix, vapor, gold, infrared, aurora, midnight
 
 These are the ONLY valid values. Any other string will throw a TypeError at runtime.
 
@@ -62,12 +68,21 @@ These are the ONLY valid values. Any other string will throw a TypeError at runt
 - `crystalline` → Sharp faceted clusters using Voronoi noise
 - `fluid` → Organic continuous flow using Simplex noise
 - `glitch` → Quantized step-function with random UV shifts
+- `organic` → Domain-warped simplex for slow fractal warping
+- `terrain` → Ridged multi-fractal for mountain-like ridgelines (5 octaves)
+- `plasma` → Animated FBM with sin wave overlay for swirling energy
+- `wave` → Multi-directional Gerstner approximation for ocean waves
 
 ### Vibe (motion character)
 - `stable` → Near-static, subtle breathing (ω ≈ 0.1 Hz)
 - `calm` → Slow rhythmic oscillation (ω ≈ 0.5 Hz)
 - `agitated` → High-frequency erratic shifts (ω ≈ 2.5 Hz)
 - `chaotic` → Stochastic vertex bursts, zero damping (ω ≈ 5.0 Hz)
+- `breathing` → Ultra-slow inhale/exhale pulse (ω ≈ 0.08 Hz)
+- `pulse` → Rhythmic heartbeat cadence (ω ≈ 1.2 Hz)
+- `drift` → Gentle lateral wind-like drift (ω ≈ 0.3 Hz)
+- `storm` → Intense turbulence (ω ≈ 4.0 Hz)
+- `cinematic` → Slow sweeping film-grade motion (ω ≈ 0.2 Hz)
 
 ### Reactivity (cursor interaction)
 - `static` → No response to pointer
@@ -76,11 +91,19 @@ These are the ONLY valid values. Any other string will throw a TypeError at runt
 - `shockwave` → Click triggers a radial ripple wave
 
 ### Palette (color identity)
-- `monochrome` → White on black (primary: #FFFFFF, accent: #888888)
-- `ember` → Warm orange/amber (primary: #FF6600, accent: #FFaa00)
-- `arctic` → Cool blue/white (primary: #88CCFF, accent: #FFFFFF)
-- `neon` → Cyberpunk green/magenta (primary: #00FF88, accent: #FF00FF)
-- `phantom` → Muted grey-purple (primary: #8888AA, accent: #666688)
+- `monochrome` → White on black (classic tech)
+- `ember` → Warm orange/amber
+- `arctic` → Cool blue/white
+- `neon` → Cyberpunk green/magenta
+- `phantom` → Muted grey-purple
+- `ocean` → Deep blue/teal (underwater)
+- `sunset` → Orange-pink horizon
+- `matrix` → Terminal green on black
+- `vapor` → Vaporwave pink/cyan
+- `gold` → Luxury gold/bronze
+- `infrared` → Thermal imaging red/yellow
+- `aurora` → Northern lights green/purple
+- `midnight` → Deep indigo/violet
 
 ### Fidelity (geometry density)
 - `low` → 64×64 segments (mobile)
@@ -118,12 +141,18 @@ kernel.update(): void
 // Advances one frame. Call this inside your own rAF loop instead of start().
 
 // Runtime state changes (all spring-animated)
-kernel.setVibe(vibe: 'stable' | 'calm' | 'agitated' | 'chaotic'): void
-kernel.setSurface(surface: 'topographic' | 'crystalline' | 'fluid' | 'glitch'): void
-kernel.setReactivity(reactivity: 'static' | 'magnetic' | 'repel' | 'shockwave'): void
-kernel.setPalette(palette: 'monochrome' | 'ember' | 'arctic' | 'neon' | 'phantom'): void
+kernel.setVibe(vibe: Vibe): void
+kernel.setSurface(surface: Surface): void
+kernel.setReactivity(reactivity: Reactivity): void
+kernel.setPalette(palette: Palette): void
 kernel.setIntensity(value: number): void    // [0, 2]
 kernel.setSpeed(value: number): void        // [0, 5]
+kernel.setAngle(value: number): void        // [0, 360] degrees
+kernel.setGrain(value: number): void        // [0, 1]
+kernel.setGlow(value: number): void         // [0, 2]
+kernel.setChromatic(value: number): void    // [0, 1]
+kernel.setVignette(value: number): void     // [0, 1]
+kernel.setBlur(value: number): void         // [0, 1]
 kernel.configure(config: Partial<SMNTCConfig>): void  // Bulk update any properties
 
 // Query
@@ -272,11 +301,11 @@ import {
   DEFAULTS,            // Default SMNTCConfig values
 
   // Token value enumerations (const arrays)
-  SURFACES,            // readonly ['topographic', 'crystalline', 'fluid', 'glitch']
-  VIBES,               // readonly ['stable', 'calm', 'agitated', 'chaotic']
+  SURFACES,            // readonly ['topographic', 'crystalline', 'fluid', 'glitch', 'organic', 'terrain', 'plasma', 'wave']
+  VIBES,               // readonly ['stable', 'calm', 'agitated', 'chaotic', 'breathing', 'pulse', 'drift', 'storm', 'cinematic']
   REACTIVITIES,        // readonly ['static', 'magnetic', 'repel', 'shockwave']
   FIDELITIES,          // readonly ['low', 'medium', 'high', 'ultra']
-  PALETTES,            // readonly ['monochrome', 'ember', 'arctic', 'neon', 'phantom']
+  PALETTES,            // readonly ['monochrome', 'ember', 'arctic', 'neon', 'phantom', 'ocean', 'sunset', 'matrix', 'vapor', 'gold', 'infrared', 'aurora', 'midnight']
 
   // Registry and presets
   listTokens,          // () => { surfaces, vibes, reactivities, fidelities, palettes }
@@ -314,6 +343,26 @@ import {
 ---
 
 ## Common Patterns
+
+### Pattern: Cinematic hero with VFX post-processing
+
+```typescript
+const kernel = new SMNTCKernel({
+  surface: 'terrain',
+  vibe: 'cinematic',
+  palette: 'gold',
+  fidelity: 'high',
+  wireframe: true,
+  grain: 0.15,
+  glow: 0.8,
+  chromatic: 0.3,
+  vignette: 0.5,
+  angle: 30,
+});
+kernel.apply(mesh, camera, renderer.domElement);
+kernel.start(renderer, scene, camera);
+// Renders a cinematic terrain with film grain, glow, chromatic aberration, and vignette
+```
 
 ### Pattern: Landing page hero background
 
