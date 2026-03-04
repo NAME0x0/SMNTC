@@ -12,6 +12,9 @@ precision highp float;
 
 // ---- SMNTC Uniforms ----
 uniform float uTime;
+uniform sampler2D uMask;        // Grayscale mask texture
+uniform float uMaskEnabled;     // 0=off, 1=on
+uniform float uMaskInvert;      // 0=normal, 1=inverted
 uniform float uSurfaceMode;    // 0=topographic, 1=crystalline, 2=fluid, 3=glitch
 uniform float uFrequency;
 uniform float uAmplitude;
@@ -25,7 +28,7 @@ uniform float uContourLines;
 uniform float uReactivityMode;    // 0=static, 1=magnetic, 2=repel, 3=shockwave
 uniform float uReactivityStrength;
 uniform float uReactivityRadius;
-uniform vec3  uPointer;           // Normalized pointer position in world space
+uniform vec3  uPointer;           // Pointer position in world space
 uniform float uShockTime;         // Time since last shockwave trigger
 uniform float uAngle;             // Displacement rotation angle in radians
 
@@ -242,7 +245,8 @@ float reactivityOffset(vec3 worldPos) {
   if (uReactivityMode < 0.5) return 0.0; // static
 
   float dist = distance(worldPos, uPointer);
-  float influence = 1.0 - smoothstep(0.0, uReactivityRadius, dist);
+  float radius = max(uReactivityRadius, 0.0001);
+  float influence = 1.0 - smoothstep(0.0, radius, dist);
 
   if (uReactivityMode < 1.5) {
     // Magnetic: pull inward
@@ -253,10 +257,11 @@ float reactivityOffset(vec3 worldPos) {
     return -influence * uReactivityStrength * 0.3;
   }
   // Shockwave: radial ripple from click point
-  float shockRadius = uShockTime * 3.0;
-  float shockWave = sin((dist - shockRadius) * 10.0) * exp(-uShockTime * 2.0);
-  float shockInfluence = smoothstep(shockRadius + 1.0, shockRadius, dist)
-                       * smoothstep(shockRadius - 1.0, shockRadius, dist);
+  float shockTime = max(uShockTime, 0.0);
+  float shockRadius = shockTime * 3.0;
+  float shockWave = sin((dist - shockRadius) * 10.0) * exp(-shockTime * 2.0);
+  float ringWidth = 1.0;
+  float shockInfluence = 1.0 - smoothstep(0.0, ringWidth, abs(dist - shockRadius));
   return shockWave * shockInfluence * uReactivityStrength * 0.5;
 }
 
@@ -264,7 +269,7 @@ float reactivityOffset(vec3 worldPos) {
 // Finite Difference Normal Recalculation
 // ============================================================================
 
-vec3 computeDisplacedNormal(vec3 pos, vec3 norm, float t) {
+vec3 computeDisplacedNormal(vec3 pos, vec3 norm, float t, float maskValue) {
   float eps = 0.01;
   vec3 tangentX = vec3(1.0, 0.0, 0.0);
   vec3 tangentZ = vec3(0.0, 0.0, 1.0);
@@ -273,6 +278,7 @@ vec3 computeDisplacedNormal(vec3 pos, vec3 norm, float t) {
   float dZ = getDisplacement(pos + tangentZ * eps, t) - getDisplacement(pos - tangentZ * eps, t);
 
   vec3 modifiedNormal = normalize(norm + vec3(-dX / (2.0 * eps), 1.0, -dZ / (2.0 * eps)));
+  modifiedNormal = normalize(mix(norm, modifiedNormal, clamp(maskValue, 0.0, 1.0)));
   return modifiedNormal;
 }
 
@@ -288,15 +294,26 @@ void main() {
 
   vec3 pos = position;
 
+  float maskValue = 1.0;
+  if (uMaskEnabled > 0.5) {
+    maskValue = texture2D(uMask, uv).r;
+    if (uMaskInvert > 0.5) {
+      maskValue = 1.0 - maskValue;
+    }
+    maskValue = clamp(maskValue, 0.0, 1.0);
+  }
+
   // Compute displacement along normal
   float disp = getDisplacement(pos, t);
-  disp += reactivityOffset(pos);
+  vec3 worldPos = (modelMatrix * vec4(pos, 1.0)).xyz;
+  disp += reactivityOffset(worldPos);
+  disp *= maskValue;
 
   // Displace vertex along its normal
   vec3 displaced = pos + normal * disp;
 
   // Recalculate normal for correct lighting
-  vNormal = computeDisplacedNormal(pos, normal, t);
+  vNormal = computeDisplacedNormal(pos, normal, t, maskValue);
   vNormal = normalize(normalMatrix * vNormal);
 
   vPosition = (modelViewMatrix * vec4(displaced, 1.0)).xyz;

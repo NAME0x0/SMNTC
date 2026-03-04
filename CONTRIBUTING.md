@@ -20,6 +20,12 @@ npm install
 | `npm run typecheck` | Type-check without emitting (`tsc --noEmit`) |
 | `npm test` | Run the test suite (vitest) |
 | `npm run lint` | ESLint the `src/` directory |
+| `npm run perf:bench` | Run deterministic micro-benchmarks (no gate) |
+| `npm run perf:budget` | Enforce CI performance budgets |
+| `npm run perf:budget:report` | Enforce budgets and emit `artifacts/perf/benchmark-results.json` |
+| `npm run perf:baseline:update` | Refresh `perf.baseline.json` from the latest perf report artifact |
+| `npm run perf:baseline:lock` | Refresh baseline and enable regression enforcement |
+| `npm run perf:baseline:unlock` | Refresh baseline and disable regression enforcement |
 
 ### Verify Before Submitting
 
@@ -27,7 +33,16 @@ npm install
 npm run typecheck   # Must exit 0
 npm run build       # Must produce dist/ with no warnings
 npm test            # Must pass
+npm run perf:budget # Must pass on Node 22 baseline
 ```
+
+### Performance Baseline Workflow
+
+1. Run CI once and download the Node 22 artifact `artifacts/perf/benchmark-results.json`.
+2. Place it at `artifacts/perf/benchmark-results.json` locally.
+3. Run `npm run perf:baseline:update` to refresh `perf.baseline.json`.
+4. When ready to enforce regression checks, run `npm run perf:baseline:lock` and commit the updated baseline.
+5. If baseline was locked from a non-CI source, run `npm run perf:baseline:unlock` before re-promoting from CI.
 
 ## Architecture Overview
 

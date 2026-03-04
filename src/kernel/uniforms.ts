@@ -3,8 +3,8 @@
 // Bridges TypeScript ShaderConstants → Three.js IUniform map.
 // ============================================================================
 
-import type { IUniform } from 'three';
-import { Vector3 } from 'three';
+import type { IUniform, Texture } from 'three';
+import { Vector2, Vector3 } from 'three';
 import type { ShaderConstants } from '../semantic/tokens';
 
 /**
@@ -12,6 +12,9 @@ import type { ShaderConstants } from '../semantic/tokens';
  */
 export interface SMNTCUniforms {
   uTime:                IUniform<number>;
+  uMask:                IUniform<Texture | null>;
+  uMaskEnabled:         IUniform<number>;
+  uMaskInvert:          IUniform<number>;
   uSurfaceMode:         IUniform<number>;
   uFrequency:           IUniform<number>;
   uAmplitude:           IUniform<number>;
@@ -20,6 +23,17 @@ export interface SMNTCUniforms {
   uIntensity:           IUniform<number>;
   uSpeed:               IUniform<number>;
   uContourLines:        IUniform<number>;
+  // Pattern overlay uniforms
+  uPatternType:         IUniform<number>;
+  uPatternScale:        IUniform<number>;
+  uPatternWeight:       IUniform<number>;
+  uPatternAlpha:        IUniform<number>;
+  uPatternMode:         IUniform<number>;
+  uPatternAnimate:      IUniform<number>;
+  uPatternRotation:     IUniform<number>;
+  uPatternMap:          IUniform<Texture | null>;
+  uPatternMapEnabled:   IUniform<number>;
+  uPatternRepeat:       IUniform<Vector2>;
   uReactivityMode:      IUniform<number>;
   uReactivityStrength:  IUniform<number>;
   uReactivityRadius:    IUniform<number>;
@@ -45,6 +59,9 @@ export interface SMNTCUniforms {
 export function createUniforms(constants: ShaderConstants): SMNTCUniforms {
   return {
     uTime:                { value: 0.0 },
+    uMask:                { value: null },
+    uMaskEnabled:         { value: 0.0 },
+    uMaskInvert:          { value: 0.0 },
     uSurfaceMode:         { value: constants.surfaceMode },
     uFrequency:           { value: constants.frequency },
     uAmplitude:           { value: constants.amplitude },
@@ -53,6 +70,16 @@ export function createUniforms(constants: ShaderConstants): SMNTCUniforms {
     uIntensity:           { value: constants.intensity },
     uSpeed:               { value: constants.speed },
     uContourLines:        { value: constants.contourLines },
+    uPatternType:         { value: constants.patternType },
+    uPatternScale:        { value: constants.patternScale },
+    uPatternWeight:       { value: constants.patternWeight },
+    uPatternAlpha:        { value: constants.patternAlpha },
+    uPatternMode:         { value: constants.patternMode },
+    uPatternAnimate:      { value: constants.patternAnimate },
+    uPatternRotation:     { value: constants.patternRotation },
+    uPatternMap:          { value: null },
+    uPatternMapEnabled:   { value: 0.0 },
+    uPatternRepeat:       { value: new Vector2(constants.patternRepeatX, constants.patternRepeatY) },
     uReactivityMode:      { value: constants.reactivityMode },
     uReactivityStrength:  { value: constants.reactivityStrength },
     uReactivityRadius:    { value: constants.reactivityRadius },
@@ -92,6 +119,14 @@ export function patchUniforms(
   uniforms.uIntensity.value           = constants.intensity;
   uniforms.uSpeed.value               = constants.speed;
   uniforms.uContourLines.value        = constants.contourLines;
+  uniforms.uPatternType.value         = constants.patternType;
+  uniforms.uPatternScale.value        = constants.patternScale;
+  uniforms.uPatternWeight.value       = constants.patternWeight;
+  uniforms.uPatternAlpha.value        = constants.patternAlpha;
+  uniforms.uPatternMode.value         = constants.patternMode;
+  uniforms.uPatternAnimate.value      = constants.patternAnimate;
+  uniforms.uPatternRotation.value     = constants.patternRotation;
+  uniforms.uPatternRepeat.value.set(constants.patternRepeatX, constants.patternRepeatY);
   uniforms.uReactivityMode.value      = constants.reactivityMode;
   uniforms.uReactivityStrength.value  = constants.reactivityStrength;
   uniforms.uReactivityRadius.value    = constants.reactivityRadius;

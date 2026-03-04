@@ -4,6 +4,9 @@
 // Interactivity & Composition
 // ============================================================================
 
+import type { Texture } from 'three';
+import type { AnySourceConfig } from '../source/types';
+
 // ---------------------------------------------------------------------------
 // Runtime-enumerable token value arrays (as const).
 // These exist so that tooling, LLMs, and consumers can programmatically
@@ -25,6 +28,15 @@ export const FIDELITIES = Object.freeze(['low', 'medium', 'high', 'ultra'] as co
 
 /** All valid palette tokens. */
 export const PALETTES = Object.freeze(['monochrome', 'ember', 'arctic', 'neon', 'phantom', 'ocean', 'sunset', 'matrix', 'vapor', 'gold', 'infrared', 'aurora', 'midnight'] as const);
+
+/** All valid pattern tokens. */
+export const PATTERNS = Object.freeze(['none', 'grid', 'hexagon', 'dots', 'voronoi', 'waves', 'concentric', 'noise', 'custom'] as const);
+
+/** All valid pattern blend mode tokens. */
+export const PATTERN_BLENDS = Object.freeze(['normal', 'add', 'multiply', 'screen'] as const);
+
+/** All valid layer blend mode tokens. */
+export const LAYER_BLEND_MODES = Object.freeze(['normal', 'add', 'multiply', 'screen', 'overlay'] as const);
 
 // ---------------------------------------------------------------------------
 // Union types — derived from the const arrays above.
@@ -99,6 +111,70 @@ export type Fidelity = (typeof FIDELITIES)[number];
 export type Palette = (typeof PALETTES)[number];
 
 /**
+ * Fragment pattern overlay identity.
+ */
+export type PatternType = (typeof PATTERNS)[number];
+
+/**
+ * Fragment pattern blend mode.
+ */
+export type PatternBlendMode = (typeof PATTERN_BLENDS)[number];
+
+/**
+ * Layer composition blend mode.
+ */
+export type LayerBlendMode = (typeof LAYER_BLEND_MODES)[number];
+
+/**
+ * Pattern overlay controls.
+ */
+export interface PatternConfig {
+  /** Pattern identity. Default: `'none'` */
+  type?: PatternType;
+
+  /** Pattern spatial frequency. Range: [0.25, 64]. Default: `8` */
+  scale?: number;
+
+  /** Pattern weight/line-width/radius control. Range: [0.01, 1]. Default: `0.2` */
+  weight?: number;
+
+  /** Pattern opacity. Range: [0, 1]. Default: `0.45` */
+  opacity?: number;
+
+  /** Pattern blend mode. Default: `'normal'` */
+  blend?: PatternBlendMode;
+
+  /** Animate pattern coordinates over time. Default: `false` */
+  animate?: boolean;
+
+  /** Pattern rotation in degrees. Range: [0, 360]. Default: `0` */
+  rotation?: number;
+
+  /** Custom pattern texture map used when `type` is `'custom'`. Default: `null` */
+  map?: Texture | null;
+
+  /** Custom texture repeat (scalar or XY tuple). Range: [0.01, 64]. Default: `1` */
+  repeat?: number | [number, number];
+}
+
+/**
+ * A semantic animation layer used in multi-layer composition.
+ */
+export interface LayerConfig {
+  /** Per-layer semantic overrides. */
+  animation?: Partial<SMNTCConfig>;
+
+  /** Layer opacity. Range: [0, 1]. Default: `1` */
+  opacity?: number;
+
+  /** Layer blend mode. Default: `'normal'` */
+  blend?: LayerBlendMode;
+
+  /** Enable/disable this layer without removing it. Default: `true` */
+  enabled?: boolean;
+}
+
+/**
  * The complete SMNTC configuration token set.
  * This is the primary input interface for both human developers and LLMs.
  */
@@ -152,6 +228,21 @@ export interface SMNTCConfig {
 
   /** Depth-of-field blur simulation. Range: [0, 1]. Default: `0` */
   blur?: number;
+
+  /** Optional fragment pattern overlay configuration. */
+  pattern?: PatternConfig;
+}
+
+/**
+ * v2 configuration shape that augments semantic tokens with source input.
+ * Existing token-first configs remain valid via `SMNTCConfig`.
+ */
+export interface SMNTCConfigV2 extends SMNTCConfig {
+  /** Source configuration for text, SVG, image, or geometry-driven inputs. */
+  source?: AnySourceConfig;
+
+  /** Optional multi-layer semantic composition stack. */
+  layers?: LayerConfig[];
 }
 
 /**
@@ -196,6 +287,17 @@ export interface ShaderConstants {
   chromatic: number;
   vignette: number;
   blur: number;
+
+  // -- Pattern -- (fragment shader overlay)
+  patternType: number;     // 0=none, 1=grid, 2=hexagon, 3=dots, 4=voronoi, 5=waves, 6=concentric, 7=noise, 8=custom
+  patternScale: number;
+  patternWeight: number;
+  patternAlpha: number;
+  patternMode: number;     // 0=normal, 1=add, 2=multiply, 3=screen
+  patternAnimate: number;  // 0=off, 1=on
+  patternRotation: number; // radians
+  patternRepeatX: number;
+  patternRepeatY: number;
 }
 
 /**

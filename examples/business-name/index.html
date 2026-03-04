@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMNTC - Business Name Example</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Sora:wght@300;400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ====================================================================
+       RESET & BASE
+       ==================================================================== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: #0c0b10;
+      color: #f4f1ea;
+      font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    :root {
+      --accent-primary: #e6c67a;
+      --accent-secondary: #f2e6c9;
+      --accent-primary-rgb: 230, 198, 122;
+      --surface-bg: #0c0b10;
+    }
+
+    /* ====================================================================
+       BACKDROP
+       ==================================================================== */
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(230, 198, 122, 0.12), transparent 45%),
+        radial-gradient(circle at 80% 10%, rgba(198, 173, 116, 0.2), transparent 40%),
+        radial-gradient(circle at 50% 80%, rgba(146, 126, 94, 0.2), transparent 55%),
+        linear-gradient(120deg, #0a0a0f, #111017 60%, #0d0d12);
+      z-index: 0;
+    }
+
+    /* ====================================================================
+       CANVAS
+       ==================================================================== */
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+    }
+
+    /* ====================================================================
+       LAYOUT
+       ==================================================================== */
+    .page {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      min-height: 100vh;
+      grid-template-rows: 1fr auto;
+      padding: 64px 24px 48px;
+    }
+
+    .hero {
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      gap: 32px;
+      align-content: center;
+      text-align: left;
+    }
+
+    .eyebrow {
+      font-family: 'IBM Plex Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.5em;
+      font-size: 0.7rem;
+      color: rgba(242, 230, 201, 0.55);
+      animation: glowPulse 4s ease-in-out infinite;
+    }
+
+    .brand {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.6rem, 7vw, 5.8rem);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+
+    .brand span {
+      color: var(--accent-primary);
+    }
+
+    .tagline {
+      font-size: clamp(1rem, 2vw, 1.35rem);
+      line-height: 1.7;
+      max-width: 560px;
+      color: rgba(244, 241, 234, 0.65);
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .cta {
+      font-family: 'Sora', sans-serif;
+      font-size: 0.95rem;
+      padding: 14px 28px;
+      border-radius: 14px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cta-primary {
+      background: var(--accent-primary);
+      color: #0c0b10;
+      box-shadow: 0 10px 30px rgba(230, 198, 122, 0.25);
+    }
+
+    .cta-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 40px rgba(230, 198, 122, 0.4);
+    }
+
+    .cta-outline {
+      border: 1px solid rgba(242, 230, 201, 0.2);
+      color: rgba(244, 241, 234, 0.85);
+      background: rgba(10, 10, 14, 0.4);
+      backdrop-filter: blur(10px);
+    }
+
+    .cta-outline:hover {
+      transform: translateY(-2px);
+      border-color: rgba(230, 198, 122, 0.5);
+    }
+
+    .signature {
+      margin-top: 24px;
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      color: rgba(244, 241, 234, 0.55);
+      font-size: 0.85rem;
+    }
+
+    .signature .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      box-shadow: 0 0 12px rgba(230, 198, 122, 0.6);
+    }
+
+    .panel {
+      margin-top: 48px;
+      padding: 24px 28px;
+      background: rgba(15, 14, 20, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      display: grid;
+      gap: 12px;
+      max-width: 560px;
+      backdrop-filter: blur(16px);
+    }
+
+    .panel h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .panel p {
+      font-size: 0.95rem;
+      color: rgba(244, 241, 234, 0.6);
+      line-height: 1.6;
+    }
+
+    .footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 16px;
+      color: rgba(244, 241, 234, 0.4);
+      font-size: 0.8rem;
+      margin-top: 32px;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.65; }
+      50% { opacity: 1; }
+    }
+
+    @media (max-width: 768px) {
+      .hero {
+        text-align: center;
+        align-content: start;
+      }
+      .panel {
+        margin-inline: auto;
+      }
+      .cta-row {
+        justify-content: center;
+      }
+      .signature {
+        justify-content: center;
+      }
+      .footer {
+        justify-content: center;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .eyebrow {
+        animation: none;
+      }
+      .cta,
+      .cta-primary,
+      .cta-outline {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+  <canvas id="scene"></canvas>
+
+  <main class="page">
+    <section class="hero">
+      <div class="eyebrow">Business Identity</div>
+      <div class="brand">Aurora <span>North</span> Holdings</div>
+      <p class="tagline">
+        A modern investment studio translating bold ideas into measurable growth.
+        Precision strategy meets cinematic motion.
+      </p>
+      <div class="cta-row">
+        <a class="cta cta-primary" href="#">Book a Consultation</a>
+        <a class="cta cta-outline" href="#">View Annual Report</a>
+      </div>
+      <div class="signature">
+        <div class="dot"></div>
+        <div>Trusted by 200+ enterprise partners since 1998.</div>
+      </div>
+      <div class="panel">
+        <h3>Market clarity, reimagined.</h3>
+        <p>
+          Deploy semantic motion across every customer touchpoint. From brand
+          launches to investor briefings, Aurora North stays unmistakably bold.
+        </p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>New York . London . Singapore</div>
+      <div>contact@auroranorth.com</div>
+    </footer>
+  </main>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { SMNTCKernel } from 'https://cdn.jsdelivr.net/npm/smntc@1.2.0/dist/index.mjs';
+
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 4);
+
+    const geometry = new THREE.PlaneGeometry(6, 4, 140, 140);
+    const mesh = new THREE.Mesh(geometry);
+    scene.add(mesh);
+
+    const kernel = new SMNTCKernel({
+      surface: 'crystalline',
+      vibe: 'cinematic',
+      palette: 'gold',
+      reactivity: 'static',
+      wireframe: false,
+      intensity: 1.05,
+      speed: 0.85,
+      angle: 18,
+      glow: 0.7,
+      chromatic: 0.08,
+      vignette: 0.25,
+    });
+    kernel.apply(mesh, camera, renderer.domElement);
+
+    function resize() {
+      const { innerWidth, innerHeight } = window;
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      kernel.setSpeed(0.2);
+      kernel.setIntensity(0.6);
+    }
+
+    kernel.start(renderer, scene, camera);
+  </script>
+</body>
+</html>

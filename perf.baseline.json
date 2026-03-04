@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "locked": false,
+  "source": {
+    "reportGeneratedAt": "2026-03-03T14:02:11.792Z",
+    "node": "v25.6.1",
+    "platform": "win32",
+    "arch": "x64",
+    "updatedAt": "2026-03-04T05:55:31.675Z"
+  },
+  "benchmarks": [
+    {
+      "name": "autoscaler.reportFrame",
+      "baselineMedianNsPerOp": 9.69,
+      "maxRegressionPct": 30
+    },
+    {
+      "name": "inputProxy.update.clean",
+      "baselineMedianNsPerOp": 5.64,
+      "maxRegressionPct": 30
+    },
+    {
+      "name": "inputProxy.update.dirty",
+      "baselineMedianNsPerOp": 117.74,
+      "maxRegressionPct": 30
+    },
+    {
+      "name": "inputProxy.update.dirty.realRaycast",
+      "baselineMedianNsPerOp": 770.25,
+      "maxRegressionPct": 35
+    }
+  ]
+}

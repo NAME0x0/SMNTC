@@ -1,0 +1,414 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/NAME0x0/SMNTC/blob/main/smntc.schema.v2.json",
+  "title": "SMNTCConfigV2",
+  "description": "Canonical v2 runtime contract: flat SMNTCConfig fields plus optional source/layers.",
+  "type": "object",
+  "properties": {
+    "surface": { "$ref": "#/$defs/surface" },
+    "vibe": { "$ref": "#/$defs/vibe" },
+    "reactivity": { "$ref": "#/$defs/reactivity" },
+    "fidelity": { "$ref": "#/$defs/fidelity" },
+    "palette": { "$ref": "#/$defs/palette" },
+    "wireframe": { "$ref": "#/$defs/wireframe" },
+    "intensity": { "$ref": "#/$defs/intensity" },
+    "speed": { "$ref": "#/$defs/speed" },
+    "contourLines": { "$ref": "#/$defs/contourLines" },
+    "thermalGuard": { "$ref": "#/$defs/thermalGuard" },
+    "angle": { "$ref": "#/$defs/angle" },
+    "grain": { "$ref": "#/$defs/grain" },
+    "glow": { "$ref": "#/$defs/glow" },
+    "chromatic": { "$ref": "#/$defs/chromatic" },
+    "vignette": { "$ref": "#/$defs/vignette" },
+    "blur": { "$ref": "#/$defs/blur" },
+    "pattern": { "$ref": "#/$defs/patternConfig" },
+    "source": { "$ref": "#/$defs/sourceConfig" },
+    "layers": {
+      "type": "array",
+      "description": "Optional semantic composition stack.",
+      "items": { "$ref": "#/$defs/layerConfig" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "surface": {
+      "type": "string",
+      "enum": ["topographic", "crystalline", "fluid", "glitch", "organic", "terrain", "plasma", "wave"],
+      "default": "topographic",
+      "description": "Visual displacement structure."
+    },
+    "vibe": {
+      "type": "string",
+      "enum": ["stable", "calm", "agitated", "chaotic", "breathing", "pulse", "drift", "storm", "cinematic"],
+      "default": "calm",
+      "description": "Motion character."
+    },
+    "reactivity": {
+      "type": "string",
+      "enum": ["static", "magnetic", "repel", "shockwave"],
+      "default": "static",
+      "description": "Cursor interaction model."
+    },
+    "fidelity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "ultra"],
+      "default": "medium",
+      "description": "Rendering quality / segment density preset."
+    },
+    "palette": {
+      "type": "string",
+      "enum": ["monochrome", "ember", "arctic", "neon", "phantom", "ocean", "sunset", "matrix", "vapor", "gold", "infrared", "aurora", "midnight"],
+      "default": "monochrome",
+      "description": "Color palette token."
+    },
+    "wireframe": {
+      "type": "boolean",
+      "default": true
+    },
+    "intensity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2,
+      "default": 1,
+      "description": "Global amplitude multiplier."
+    },
+    "speed": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5,
+      "default": 1,
+      "description": "Global speed multiplier."
+    },
+    "contourLines": {
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 64,
+      "default": 16
+    },
+    "thermalGuard": {
+      "type": "boolean",
+      "default": true
+    },
+    "angle": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360,
+      "default": 0
+    },
+    "grain": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0
+    },
+    "glow": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2,
+      "default": 0
+    },
+    "chromatic": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0
+    },
+    "vignette": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0
+    },
+    "blur": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0
+    },
+    "patternConfig": {
+      "type": "object",
+      "description": "Fragment pattern overlay controls.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["none", "grid", "hexagon", "dots", "voronoi", "waves", "concentric", "noise", "custom"],
+          "default": "none"
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 64,
+          "default": 8
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1,
+          "default": 0.2
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.45
+        },
+        "blend": {
+          "type": "string",
+          "enum": ["normal", "add", "multiply", "screen"],
+          "default": "normal"
+        },
+        "animate": {
+          "type": "boolean",
+          "default": false
+        },
+        "rotation": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 360,
+          "default": 0
+        },
+        "map": {
+          "type": ["object", "null"],
+          "description": "Runtime-only Three.js Texture for custom patterns. Not representable as pure JSON."
+        },
+        "repeat": {
+          "description": "Custom pattern texture repeat. Scalar or [x,y] tuple.",
+          "default": 1,
+          "oneOf": [
+            { "type": "number", "minimum": 0.01, "maximum": 64 },
+            {
+              "type": "array",
+              "items": [
+                { "type": "number", "minimum": 0.01, "maximum": 64 },
+                { "type": "number", "minimum": 0.01, "maximum": 64 }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "semanticAnimationConfig": {
+      "type": "object",
+      "description": "Partial flat SMNTCConfig overrides for layer.animation.",
+      "properties": {
+        "surface": { "$ref": "#/$defs/surface" },
+        "vibe": { "$ref": "#/$defs/vibe" },
+        "reactivity": { "$ref": "#/$defs/reactivity" },
+        "fidelity": { "$ref": "#/$defs/fidelity" },
+        "palette": { "$ref": "#/$defs/palette" },
+        "wireframe": { "$ref": "#/$defs/wireframe" },
+        "intensity": { "$ref": "#/$defs/intensity" },
+        "speed": { "$ref": "#/$defs/speed" },
+        "contourLines": { "$ref": "#/$defs/contourLines" },
+        "thermalGuard": { "$ref": "#/$defs/thermalGuard" },
+        "angle": { "$ref": "#/$defs/angle" },
+        "grain": { "$ref": "#/$defs/grain" },
+        "glow": { "$ref": "#/$defs/glow" },
+        "chromatic": { "$ref": "#/$defs/chromatic" },
+        "vignette": { "$ref": "#/$defs/vignette" },
+        "blur": { "$ref": "#/$defs/blur" },
+        "pattern": { "$ref": "#/$defs/patternConfig" }
+      },
+      "additionalProperties": false
+    },
+    "layerConfig": {
+      "type": "object",
+      "properties": {
+        "animation": { "$ref": "#/$defs/semanticAnimationConfig" },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1
+        },
+        "blend": {
+          "type": "string",
+          "enum": ["normal", "add", "multiply", "screen", "overlay"],
+          "default": "normal"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "sourceConfig": {
+      "description": "Source input for v2 mesh generation.",
+      "oneOf": [
+        { "$ref": "#/$defs/textSourceConfig" },
+        { "$ref": "#/$defs/svgSourceConfig" },
+        { "$ref": "#/$defs/imageSourceConfig" },
+        { "$ref": "#/$defs/geometrySourceConfig" }
+      ]
+    },
+    "textSourceConfig": {
+      "type": "object",
+      "required": ["type", "content"],
+      "properties": {
+        "type": { "const": "text" },
+        "content": {
+          "type": "string",
+          "minLength": 1
+        },
+        "font": {
+          "type": "string",
+          "description": "Font family or URL (ttf/otf/woff or Google Fonts spec)."
+        },
+        "size": {
+          "type": "number",
+          "minimum": 0.001,
+          "default": 1
+        },
+        "extrude": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0.1
+        },
+        "bevel": {
+          "type": "boolean",
+          "default": false
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128,
+          "default": 12
+        },
+        "maskInvert": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "svgSourceConfig": {
+      "type": "object",
+      "required": ["type", "path"],
+      "properties": {
+        "type": { "const": "svg" },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "SVG path data, SVG markup, or URL/path to an .svg resource."
+        },
+        "extrude": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0.1
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128,
+          "default": 12
+        },
+        "maskInvert": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "imageSourceConfig": {
+      "type": "object",
+      "required": ["type", "src"],
+      "properties": {
+        "type": { "const": "image" },
+        "src": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Image URL/path/data URI."
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 0.99,
+          "default": 0.2
+        },
+        "simplify": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.05
+        },
+        "adaptiveDensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.75
+        },
+        "maskInvert": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "geometrySourceConfig": {
+      "type": "object",
+      "required": ["type", "geometry"],
+      "properties": {
+        "type": { "const": "geometry" },
+        "geometry": {
+          "type": "object",
+          "description": "Runtime BufferGeometry instance. This value is non-JSON and must be supplied from JavaScript/TypeScript code."
+        },
+        "maskTexture": {
+          "type": ["object", "null"],
+          "description": "Optional runtime Texture instance for displacement masking (non-JSON)."
+        },
+        "maskInvert": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "surface": "fluid",
+      "vibe": "calm",
+      "palette": "arctic",
+      "pattern": {
+        "type": "hexagon",
+        "scale": 6,
+        "weight": 0.25,
+        "opacity": 0.35
+      },
+      "source": {
+        "type": "text",
+        "content": "SMNTC",
+        "font": "/fonts/inter.ttf",
+        "extrude": 0.1,
+        "segments": 24
+      }
+    },
+    {
+      "surface": "topographic",
+      "vibe": "drift",
+      "palette": "neon",
+      "source": {
+        "type": "svg",
+        "path": "M10 10 L90 90 L10 90 Z"
+      },
+      "layers": [
+        {
+          "opacity": 0.4,
+          "blend": "screen",
+          "animation": {
+            "palette": "ember",
+            "pattern": {
+              "type": "waves",
+              "weight": 0.3
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

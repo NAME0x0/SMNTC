@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMNTC - Logo Animation Example</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:wght@500;700&family=Archivo:wght@300;400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ====================================================================
+       RESET & BASE
+       ==================================================================== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      background: #06070b;
+      color: #eef2f8;
+      font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+    }
+
+    :root {
+      --accent-primary: #77e6d4;
+      --accent-secondary: #5aa7ff;
+      --accent-tertiary: #f5c1ff;
+      --accent-primary-rgb: 119, 230, 212;
+      --bg-deep: #06070b;
+    }
+
+    /* ====================================================================
+       BACKGROUND LAYERS
+       ==================================================================== */
+    .glow-field {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(119, 230, 212, 0.15), transparent 40%),
+        radial-gradient(circle at 80% 15%, rgba(90, 167, 255, 0.2), transparent 45%),
+        radial-gradient(circle at 65% 80%, rgba(245, 193, 255, 0.18), transparent 50%),
+        linear-gradient(120deg, #050609 0%, #0b0f1a 55%, #07080d 100%);
+      z-index: 0;
+    }
+
+    /* ====================================================================
+       CANVAS
+       ==================================================================== */
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+    }
+
+    /* ====================================================================
+       OVERLAY
+       ==================================================================== */
+    .layout {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) minmax(240px, 360px);
+      gap: 32px;
+      padding: 64px 56px;
+      align-items: center;
+    }
+
+    .brand-stack {
+      display: grid;
+      gap: 28px;
+      max-width: 560px;
+    }
+
+    .eyebrow {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.6em;
+      text-transform: uppercase;
+      color: rgba(238, 242, 248, 0.45);
+    }
+
+    .headline {
+      font-family: 'Bodoni Moda', serif;
+      font-size: clamp(2.8rem, 6vw, 5.4rem);
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+    }
+
+    .headline span {
+      color: var(--accent-primary);
+    }
+
+    .subhead {
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: rgba(238, 242, 248, 0.6);
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .cta {
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 12px 26px;
+      border-radius: 999px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .cta-primary {
+      background: linear-gradient(120deg, var(--accent-primary), var(--accent-secondary));
+      color: #050609;
+      box-shadow: 0 10px 30px rgba(90, 167, 255, 0.25);
+    }
+
+    .cta-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 40px rgba(90, 167, 255, 0.35);
+    }
+
+    .cta-ghost {
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: rgba(238, 242, 248, 0.85);
+      background: rgba(5, 6, 9, 0.4);
+      backdrop-filter: blur(12px);
+    }
+
+    .cta-ghost:hover {
+      transform: translateY(-2px);
+      border-color: rgba(119, 230, 212, 0.5);
+    }
+
+    .logo-panel {
+      padding: 28px;
+      border-radius: 20px;
+      background: rgba(10, 12, 18, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(18px);
+      display: grid;
+      gap: 16px;
+      justify-items: start;
+    }
+
+    .logo-title {
+      font-family: 'IBM Plex Mono', monospace;
+      text-transform: uppercase;
+      font-size: 0.65rem;
+      letter-spacing: 0.4em;
+      color: rgba(238, 242, 248, 0.45);
+    }
+
+    .logo-mark {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--accent-primary);
+    }
+
+    .logo-meta {
+      font-size: 0.9rem;
+      color: rgba(238, 242, 248, 0.55);
+      line-height: 1.5;
+    }
+
+    .pulse {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: rgba(238, 242, 248, 0.45);
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      box-shadow: 0 0 12px rgba(119, 230, 212, 0.65);
+      animation: pulse 2.6s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.6; }
+      50% { transform: scale(1.7); opacity: 1; }
+    }
+
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: 1fr;
+        padding: 48px 28px;
+        text-align: center;
+      }
+      .cta-row {
+        justify-content: center;
+      }
+      .logo-panel {
+        justify-items: center;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .pulse-dot {
+        animation: none;
+      }
+      .cta {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-field" aria-hidden="true"></div>
+  <canvas id="scene"></canvas>
+
+  <main class="layout">
+    <section class="brand-stack">
+      <div class="eyebrow">Signature Identity</div>
+      <h1 class="headline">Echoforge <span>Studios</span></h1>
+      <p class="subhead">
+        A modern mark engineered for motion. Shape, light, and velocity combine
+        into a logo system built for film titles, product reveals, and digital
+        launches.
+      </p>
+      <div class="cta-row">
+        <a class="cta cta-primary" href="#">Download Brand Kit</a>
+        <a class="cta cta-ghost" href="#">View Campaign Reel</a>
+      </div>
+    </section>
+
+    <aside class="logo-panel">
+      <div class="logo-title">Animated Mark</div>
+      <div class="logo-mark">EF</div>
+      <p class="logo-meta">
+        The full logo animation runs at 30fps with a cinematic cadence. Export
+        to WebGL, CSS, or video outputs instantly.
+      </p>
+      <div class="pulse">
+        <span class="pulse-dot"></span>
+        Motion Synced
+      </div>
+    </aside>
+  </main>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { SMNTCKernel } from 'https://cdn.jsdelivr.net/npm/smntc@1.2.0/dist/index.mjs';
+
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 4.6);
+
+    const geometry = new THREE.PlaneGeometry(3, 3, 64, 64);
+    const mesh = new THREE.Mesh(geometry);
+    scene.add(mesh);
+
+    const kernel = new SMNTCKernel({
+      surface: 'plasma',
+      vibe: 'drift',
+      palette: 'aurora',
+      reactivity: 'magnetic',
+      wireframe: false,
+      intensity: 1.15,
+      speed: 0.9,
+      glow: 0.85,
+      chromatic: 0.12,
+      vignette: 0.2,
+      blur: 0.08,
+      angle: 12,
+    });
+
+    kernel.apply(mesh, camera, renderer.domElement);
+
+    function resize() {
+      const { innerWidth, innerHeight } = window;
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      kernel.setSpeed(0.25);
+      kernel.setIntensity(0.6);
+      kernel.setReactivity('static');
+    }
+
+    kernel.start(renderer, scene, camera);
+  </script>
+</body>
+</html>

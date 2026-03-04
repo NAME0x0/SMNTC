@@ -13,7 +13,13 @@ export type {
   Reactivity,
   Fidelity,
   Palette,
+  PatternType,
+  PatternBlendMode,
+  LayerBlendMode,
+  PatternConfig,
+  LayerConfig,
   SMNTCConfig,
+  SMNTCConfigV2,
   ShaderConstants,
 } from './semantic/tokens';
 
@@ -23,6 +29,9 @@ export {
   REACTIVITIES,
   FIDELITIES,
   PALETTES,
+  PATTERNS,
+  PATTERN_BLENDS,
+  LAYER_BLEND_MODES,
 } from './semantic/tokens';
 
 export {
@@ -75,3 +84,15 @@ export { AutoScaler } from './performance/auto-scaler';
 // Material (advanced use / R3F extend)
 export { SMNTCMaterial } from './material/SMNTCMaterial';
 export type { SMNTCMaterialOptions } from './material/SMNTCMaterial';
+
+// Source Abstraction
+export * from './source';
+
+// Mesh Utilities
+export * from './mesh';
+
+// Layer Composition
+export * from './layer';
+
+// Export Targets
+export * from './export';

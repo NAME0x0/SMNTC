@@ -13,10 +13,12 @@ import {
   NormalBlending,
   Mesh,
 } from 'three';
-import type { Camera } from 'three';
+import type { BufferGeometry, Camera } from 'three';
 
-import type { SMNTCConfig, ShaderConstants, Vibe, Surface, Reactivity, Palette } from '../semantic/tokens';
+import type { Fidelity, LayerConfig, SMNTCConfig, ShaderConstants, Vibe, Surface, Reactivity, Palette } from '../semantic/tokens';
 import { resolveConstants, DEFAULTS } from '../semantic/dictionary';
+import { composeLayerConstants } from '../layer/compositor';
+import { buildLodGeometries, getGeometryVertexCount } from '../mesh';
 import { createUniforms } from '../kernel/uniforms';
 import type { SMNTCUniforms } from '../kernel/uniforms';
 import { UBER_VERTEX_SHADER } from '../kernel/shaders/uber.vert';
@@ -26,15 +28,47 @@ import type { SpringConfig } from '../physics/spring';
 import { InputProxy } from '../reactivity/input-proxy';
 import { AutoScaler } from '../performance/auto-scaler';
 
+const FIDELITY_TARGET_RATIOS: Record<Fidelity, number> = {
+  ultra: 1.0,
+  high: 0.7,
+  medium: 0.4,
+  low: 0.2,
+};
+
+const LOD_LEVEL_COUNT = 4;
+
 // ---------------------------------------------------------------------------
 // Options
 // ---------------------------------------------------------------------------
 
 export interface SMNTCMaterialOptions extends SMNTCConfig {
+  layers?: LayerConfig[];
   camera?: Camera;
   domElement?: HTMLElement;
   springConfig?: Partial<SpringConfig>;
   disableAutoScale?: boolean;
+}
+
+function cloneLayerConfigs(layers: readonly LayerConfig[] | null | undefined): LayerConfig[] {
+  if (!layers || layers.length === 0) {
+    return [];
+  }
+
+  return layers.map((layer) => {
+    const animation = layer.animation
+      ? {
+          ...layer.animation,
+          pattern: layer.animation.pattern
+            ? { ...layer.animation.pattern }
+            : undefined,
+        }
+      : undefined;
+
+    return {
+      ...layer,
+      animation,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -65,6 +99,13 @@ export class SMNTCMaterial extends ShaderMaterial {
   private camera: Camera | null = null;
   private domElement: HTMLElement | null = null;
   private raycaster: Raycaster;
+  private layers: LayerConfig[] = [];
+
+  private lodBaseGeometry: BufferGeometry | null = null;
+  private lodGeometries: BufferGeometry[] = [];
+  private lodVertexCounts: number[] = [];
+  private generatedLodGeometries: BufferGeometry[] = [];
+  private shaderVariantKey = '';
 
   private _disposed = false;
   private _lastFrameTime = 0;
@@ -87,9 +128,16 @@ export class SMNTCMaterial extends ShaderMaterial {
       chromatic:    options.chromatic    ?? DEFAULTS.chromatic,
       vignette:     options.vignette     ?? DEFAULTS.vignette,
       blur:         options.blur         ?? DEFAULTS.blur,
+      pattern: {
+        ...DEFAULTS.pattern,
+        ...(options.pattern ?? {}),
+      },
     };
+    const layers = cloneLayerConfigs(options.layers);
 
-    const constants = resolveConstants(config);
+    const constants = layers.length === 0
+      ? resolveConstants(config)
+      : composeLayerConstants(config, layers);
     const uniforms = createUniforms(constants);
 
     super({
@@ -106,22 +154,26 @@ export class SMNTCMaterial extends ShaderMaterial {
     });
 
     this.config = config;
+    this.layers = layers;
     this.constants = constants;
     this.smntcUniforms = uniforms;
     this.clock = new Clock(false);
+    this.applyShaderVariant(constants);
 
     this.springs = new SpringBank(options.springConfig);
     this.initializeSpringTargets(constants);
+    this.writePatternUniforms(constants);
 
     this.autoScaler = new AutoScaler(this.config.fidelity, {
       enabled: !options.disableAutoScale,
     });
     this.autoScaler.onFidelityChange = (fidelity) => {
       this.config.fidelity = fidelity;
-      const newConstants = resolveConstants(this.config);
+      const newConstants = this.resolveActiveConstants(this.config, this.layers);
       this.constants.segments = newConstants.segments;
       this.constants.wireframeWidth = newConstants.wireframeWidth;
       this.springs.setTarget('wireframeWidth', newConstants.wireframeWidth);
+      this.applyCurrentFidelityGeometry();
     };
 
     this.raycaster = new Raycaster();
@@ -184,6 +236,38 @@ export class SMNTCMaterial extends ShaderMaterial {
     sp.chromatic.setTarget(c.chromatic);
     sp.vignette.setTarget(c.vignette);
     sp.blur.setTarget(c.blur);
+    this.applyShaderVariant(c);
+  }
+
+  private resolveShaderVariantDefines(c: ShaderConstants): Record<string, number> {
+    const patternEnabled = c.patternType > 0 && c.patternAlpha > 0.001 ? 1 : 0;
+    const postFxEnabled = (
+      c.grain > 0.001
+      || c.glow > 0.01
+      || c.chromatic > 0.001
+      || c.vignette > 0.001
+      || c.blur > 0.001
+    ) ? 1 : 0;
+
+    return {
+      SMNTC_ENABLE_PATTERN: patternEnabled,
+      SMNTC_ENABLE_POSTFX: postFxEnabled,
+    };
+  }
+
+  private applyShaderVariant(c: ShaderConstants): void {
+    const defines = this.resolveShaderVariantDefines(c);
+    const nextKey = `${defines.SMNTC_ENABLE_PATTERN}|${defines.SMNTC_ENABLE_POSTFX}`;
+    if (nextKey === this.shaderVariantKey) {
+      return;
+    }
+
+    this.shaderVariantKey = nextKey;
+    this.defines = {
+      ...(this.defines ?? {}),
+      ...defines,
+    };
+    this.needsUpdate = true;
   }
 
   private writeSpringValuesToUniforms(): void {
@@ -218,19 +302,156 @@ export class SMNTCMaterial extends ShaderMaterial {
     this.smntcUniforms.uBlur.value      = sp.blur.value;
   }
 
+  private writePatternUniforms(c: ShaderConstants): void {
+    this.smntcUniforms.uPatternType.value = c.patternType;
+    this.smntcUniforms.uPatternScale.value = c.patternScale;
+    this.smntcUniforms.uPatternWeight.value = c.patternWeight;
+    this.smntcUniforms.uPatternAlpha.value = c.patternAlpha;
+    this.smntcUniforms.uPatternMode.value = c.patternMode;
+    this.smntcUniforms.uPatternAnimate.value = c.patternAnimate;
+    this.smntcUniforms.uPatternRotation.value = c.patternRotation;
+    this.smntcUniforms.uPatternRepeat.value.set(c.patternRepeatX, c.patternRepeatY);
+    this.smntcUniforms.uPatternMap.value = this.config.pattern.map ?? null;
+    this.smntcUniforms.uPatternMapEnabled.value = this.smntcUniforms.uPatternMap.value ? 1.0 : 0.0;
+  }
+
+  private resolveActiveConstants(
+    config: Partial<SMNTCConfig>,
+    layers: readonly LayerConfig[],
+  ): ShaderConstants {
+    if (layers.length === 0) {
+      return resolveConstants(config);
+    }
+    return composeLayerConstants(config, layers);
+  }
+
+  private resolveBaseGeometryForMesh(mesh: Mesh): BufferGeometry {
+    if (
+      this.mesh === mesh
+      && this.lodBaseGeometry
+      && this.lodGeometries.includes(mesh.geometry)
+    ) {
+      return this.lodBaseGeometry;
+    }
+
+    return mesh.geometry;
+  }
+
+  private disposeGeneratedLodGeometries(): void {
+    for (const geometry of this.generatedLodGeometries) {
+      geometry.dispose();
+    }
+
+    this.generatedLodGeometries = [];
+    this.lodBaseGeometry = null;
+    this.lodGeometries = [];
+    this.lodVertexCounts = [];
+  }
+
+  private rebuildLodCache(baseGeometry: BufferGeometry | null): void {
+    if (!baseGeometry) {
+      this.disposeGeneratedLodGeometries();
+      return;
+    }
+
+    if (this.lodBaseGeometry === baseGeometry && this.lodGeometries.length > 0) {
+      return;
+    }
+
+    this.disposeGeneratedLodGeometries();
+
+    const builtLods = buildLodGeometries(baseGeometry, {
+      levels: LOD_LEVEL_COUNT,
+    });
+
+    const lodGeometries: BufferGeometry[] = [baseGeometry];
+    if (builtLods.length > 0) {
+      // Keep caller-owned base geometry as LOD0 to avoid ownership surprises.
+      builtLods[0].dispose();
+    }
+
+    for (let i = 1; i < builtLods.length; i++) {
+      const geometry = builtLods[i];
+      lodGeometries.push(geometry);
+      this.generatedLodGeometries.push(geometry);
+    }
+
+    this.lodBaseGeometry = baseGeometry;
+    this.lodGeometries = lodGeometries;
+    this.lodVertexCounts = lodGeometries.map((geometry) => getGeometryVertexCount(geometry));
+  }
+
+  private resolveGeometryForFidelity(fidelity: Fidelity): BufferGeometry | null {
+    if (this.lodGeometries.length === 0) {
+      return null;
+    }
+
+    const baseCount = this.lodVertexCounts[0] ?? 0;
+    if (baseCount <= 0 || this.lodGeometries.length === 1) {
+      return this.lodGeometries[0];
+    }
+
+    const targetVertexCount = Math.max(
+      4,
+      Math.round(baseCount * FIDELITY_TARGET_RATIOS[fidelity]),
+    );
+
+    let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < this.lodVertexCounts.length; i++) {
+      const distance = Math.abs(this.lodVertexCounts[i] - targetVertexCount);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = i;
+      }
+    }
+
+    return this.lodGeometries[bestIndex] ?? this.lodGeometries[this.lodGeometries.length - 1] ?? null;
+  }
+
+  private applyCurrentFidelityGeometry(mesh: Mesh | null = this.mesh): void {
+    if (!mesh) {
+      return;
+    }
+
+    if (this.lodGeometries.length === 0) {
+      this.rebuildLodCache(this.resolveBaseGeometryForMesh(mesh));
+    }
+
+    const nextGeometry = this.resolveGeometryForFidelity(this.config.fidelity);
+    if (!nextGeometry) {
+      return;
+    }
+
+    if (mesh.geometry !== nextGeometry) {
+      mesh.geometry = nextGeometry;
+    }
+  }
+
+  private rebuildLodsFromGeometry(baseGeometry: BufferGeometry | null, mesh: Mesh | null = this.mesh): void {
+    this.rebuildLodCache(baseGeometry);
+    this.applyCurrentFidelityGeometry(mesh);
+  }
+
   // =========================================================================
   // Reactivity
   // =========================================================================
 
   attachMesh(mesh: Mesh, camera?: Camera, domElement?: HTMLElement): this {
+    const baseGeometry = this.resolveBaseGeometryForMesh(mesh);
     this.mesh = mesh;
+    this.rebuildLodsFromGeometry(baseGeometry, mesh);
 
     const cam = camera ?? this.camera;
     const dom = domElement ?? this.domElement;
+    if (cam) this.camera = cam;
+    if (dom) this.domElement = dom;
+
+    // Re-attaching should always tear down the previous proxy/listeners first.
+    this.inputProxy?.dispose();
+    this.inputProxy = null;
 
     if (this.config.reactivity !== 'static' && cam && dom) {
-      this.camera = cam;
-      this.domElement = dom;
       this.inputProxy = new InputProxy({
         domElement: dom,
         camera: cam,
@@ -250,22 +471,24 @@ export class SMNTCMaterial extends ShaderMaterial {
 
   setVibe(vibe: Vibe): this {
     this.config.vibe = vibe;
-    this.pushSpringTargets(resolveConstants(this.config));
+    this.pushSpringTargets(this.resolveActiveConstants(this.config, this.layers));
     return this;
   }
 
   setSurface(surface: Surface): this {
     this.config.surface = surface;
-    const c = resolveConstants(this.config);
+    const c = this.resolveActiveConstants(this.config, this.layers);
     this.smntcUniforms.uSurfaceMode.value = c.surfaceMode;
+    this.writePatternUniforms(c);
     this.pushSpringTargets(c);
     return this;
   }
 
   setReactivity(reactivity: Reactivity): this {
     this.config.reactivity = reactivity;
-    const c = resolveConstants(this.config);
+    const c = this.resolveActiveConstants(this.config, this.layers);
     this.smntcUniforms.uReactivityMode.value = c.reactivityMode;
+    this.writePatternUniforms(c);
     this.pushSpringTargets(c);
 
     if (this.mesh && this.camera && this.domElement) {
@@ -288,67 +511,92 @@ export class SMNTCMaterial extends ShaderMaterial {
 
   setPalette(palette: Palette): this {
     this.config.palette = palette;
-    this.pushSpringTargets(resolveConstants(this.config));
+    this.pushSpringTargets(this.resolveActiveConstants(this.config, this.layers));
     return this;
   }
 
   setIntensity(intensity: number): this {
     this.config.intensity = Math.max(0, Math.min(2, intensity));
-    this.pushSpringTargets(resolveConstants(this.config));
+    this.pushSpringTargets(this.resolveActiveConstants(this.config, this.layers));
     return this;
   }
 
   setSpeed(speed: number): this {
     this.config.speed = Math.max(0, Math.min(5, speed));
-    this.pushSpringTargets(resolveConstants(this.config));
+    this.pushSpringTargets(this.resolveActiveConstants(this.config, this.layers));
     return this;
   }
 
   setAngle(angle: number): this {
     this.config.angle = Math.max(0, Math.min(360, angle));
-    this.pushSpringTargets(resolveConstants(this.config));
+    this.pushSpringTargets(this.resolveActiveConstants(this.config, this.layers));
     return this;
   }
 
   setGrain(grain: number): this {
     this.config.grain = Math.max(0, Math.min(1, grain));
-    this.pushSpringTargets(resolveConstants(this.config));
+    this.pushSpringTargets(this.resolveActiveConstants(this.config, this.layers));
     return this;
   }
 
   setGlow(glow: number): this {
     this.config.glow = Math.max(0, Math.min(2, glow));
-    this.pushSpringTargets(resolveConstants(this.config));
+    this.pushSpringTargets(this.resolveActiveConstants(this.config, this.layers));
     return this;
   }
 
   setChromatic(chromatic: number): this {
     this.config.chromatic = Math.max(0, Math.min(1, chromatic));
-    this.pushSpringTargets(resolveConstants(this.config));
+    this.pushSpringTargets(this.resolveActiveConstants(this.config, this.layers));
     return this;
   }
 
   setVignette(vignette: number): this {
     this.config.vignette = Math.max(0, Math.min(1, vignette));
-    this.pushSpringTargets(resolveConstants(this.config));
+    this.pushSpringTargets(this.resolveActiveConstants(this.config, this.layers));
     return this;
   }
 
   setBlur(blur: number): this {
     this.config.blur = Math.max(0, Math.min(1, blur));
-    this.pushSpringTargets(resolveConstants(this.config));
+    this.pushSpringTargets(this.resolveActiveConstants(this.config, this.layers));
     return this;
   }
 
-  configure(config: Partial<SMNTCConfig>): this {
-    Object.assign(this.config, config);
-    const c = resolveConstants(this.config);
+  setLayers(layers: LayerConfig[] | null): this {
+    this.layers = cloneLayerConfigs(layers ?? []);
+    const c = this.resolveActiveConstants(this.config, this.layers);
+    this.smntcUniforms.uSurfaceMode.value = c.surfaceMode;
+    this.smntcUniforms.uReactivityMode.value = c.reactivityMode;
+    this.smntcUniforms.uWireframe.value = c.wireframe ? 1.0 : 0.0;
+    this.writePatternUniforms(c);
+    this.pushSpringTargets(c);
+    return this;
+  }
+
+  configure(config: Partial<SMNTCConfig> & { layers?: LayerConfig[] }): this {
+    const { pattern, layers, ...semanticConfig } = config;
+    if (layers !== undefined) {
+      this.layers = cloneLayerConfigs(layers);
+    }
+
+    if (pattern !== undefined) {
+      this.config.pattern = {
+        ...this.config.pattern,
+        ...pattern,
+      };
+    }
+
+    Object.assign(this.config, semanticConfig);
+    const c = this.resolveActiveConstants(this.config, this.layers);
 
     this.smntcUniforms.uSurfaceMode.value = c.surfaceMode;
     this.smntcUniforms.uReactivityMode.value = c.reactivityMode;
     this.smntcUniforms.uWireframe.value = c.wireframe ? 1.0 : 0.0;
+    this.writePatternUniforms(c);
 
     this.pushSpringTargets(c);
+    this.applyCurrentFidelityGeometry();
     return this;
   }
 
@@ -390,6 +638,10 @@ export class SMNTCMaterial extends ShaderMaterial {
     return { ...this.config };
   }
 
+  getLayers(): ReadonlyArray<LayerConfig> {
+    return cloneLayerConfigs(this.layers);
+  }
+
   getUniforms(): SMNTCUniforms {
     return this.smntcUniforms;
   }
@@ -409,9 +661,11 @@ export class SMNTCMaterial extends ShaderMaterial {
     this.inputProxy?.dispose();
     this.autoScaler.dispose();
     this.springs.dispose();
+    this.disposeGeneratedLodGeometries();
 
     super.dispose();
 
+    this.layers = [];
     this.mesh = null;
     this.camera = null;
     this.domElement = null;

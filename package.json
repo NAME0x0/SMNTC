@@ -35,6 +35,15 @@
       "types": "./dist/web/index.d.ts",
       "import": "./dist/web/index.mjs",
       "default": "./dist/web/index.mjs"
+    },
+    "./schema": {
+      "default": "./smntc.schema.v2.json"
+    },
+    "./schema/v2": {
+      "default": "./smntc.schema.v2.json"
+    },
+    "./schema/v1": {
+      "default": "./smntc.schema.json"
     }
   },
   "files": [
@@ -47,6 +56,7 @@
     "CHANGELOG.md",
     "llms.txt",
     "llms-full.txt",
+    "smntc.schema.v2.json",
     "smntc.schema.json"
   ],
   "scripts": {
@@ -58,7 +68,17 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:contracts": "vitest run src/integration/schema-v2.contract.test.ts src/integration/release-hygiene.contract.test.ts",
+    "test:watch": "vitest",
+    "test:browser:jsdom": "vitest run src/integration/browser-export-smoke.jsdom.test.ts",
+    "test:browser:happydom": "vitest run src/integration/browser-export-smoke.happydom.test.ts",
+    "test:browser": "npm run test:browser:jsdom && npm run test:browser:happydom",
+    "perf:bench": "node scripts/perf-budget.mjs",
+    "perf:budget": "node scripts/perf-budget.mjs --check --baseline perf.baseline.json",
+    "perf:budget:report": "node scripts/perf-budget.mjs --check --baseline perf.baseline.json --json artifacts/perf/benchmark-results.json",
+    "perf:baseline:update": "node scripts/perf-baseline.mjs --from artifacts/perf/benchmark-results.json --out perf.baseline.json",
+    "perf:baseline:lock": "node scripts/perf-baseline.mjs --from artifacts/perf/benchmark-results.json --out perf.baseline.json --lock",
+    "perf:baseline:unlock": "node scripts/perf-baseline.mjs --from artifacts/perf/benchmark-results.json --out perf.baseline.json --unlock"
   },
   "size-limit": [
     {
@@ -111,11 +131,17 @@
   "devDependencies": {
     "@size-limit/preset-small-lib": "^12.0.0",
     "@types/node": "^25.2.1",
+    "@types/opentype.js": "^1.3.9",
     "@types/three": "^0.160.0",
+    "happy-dom": "^20.8.3",
+    "jsdom": "^28.1.0",
     "size-limit": "^11.1.0",
     "three": "^0.170.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
     "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "opentype.js": "^1.3.4"
   }
 }

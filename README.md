@@ -158,6 +158,9 @@ function Scene() {
 npx smntc init       # Create smntc.config.json
 npx smntc add hero   # Create a preset template
 npx smntc preview    # Copy demo to smntc-preview/
+npx smntc export css # Generate CSS + SVG filter defs from config
+npx smntc export video-template  # Write browser video export template
+npx smntc export static-template # Write browser static export template
 ```
 
 ---
@@ -256,6 +259,25 @@ const kernel = new SMNTCKernel({
   blur: 0,                  // Depth blur simulation [0-1]
   thermalGuard: true,       // Pause animation when tab hidden
 });
+```
+
+Canonical v2 config (`SMNTCConfigV2`) also supports `source`, `pattern`, and `layers`:
+
+```typescript
+const configV2 = {
+  surface: 'fluid',
+  vibe: 'calm',
+  palette: 'arctic',
+  pattern: { type: 'hexagon', scale: 6, weight: 0.25, opacity: 0.35 },
+  source: { type: 'text', content: 'SMNTC', font: '/fonts/inter.ttf', extrude: 0.1, segments: 24 },
+  layers: [
+    {
+      opacity: 0.35,
+      blend: 'screen',
+      animation: { palette: 'ember', pattern: { type: 'waves', weight: 0.3 } },
+    },
+  ],
+};
 ```
 
 #### Methods
@@ -468,7 +490,8 @@ smntc/
 ├── CODE_OF_CONDUCT.md               # Community guidelines
 ├── llms.txt                        # LLM context (concise)
 ├── llms-full.txt                   # LLM context (complete)
-├── smntc.schema.json               # JSON Schema for SMNTCConfig
+├── smntc.schema.v2.json            # Canonical JSON Schema for SMNTCConfigV2
+├── smntc.schema.json               # Legacy v1 schema (compatibility)
 ├── jsr.json                         # JSR registry config
 ├── stackblitz.json                  # StackBlitz playground config
 ├── CHANGELOG.md                    # Release changelog
@@ -491,12 +514,22 @@ optimized for LLM context injection:
 |------|---------|
 | [`llms.txt`](llms.txt) | Concise context — enough to generate correct SMNTC code |
 | [`llms-full.txt`](llms-full.txt) | Complete API surface, all valid tokens, patterns, and gotchas |
-| [`smntc.schema.json`](smntc.schema.json) | Machine-validatable JSON Schema for `SMNTCConfig` |
+| [`smntc.schema.v2.json`](smntc.schema.v2.json) | Canonical machine-validatable schema for `SMNTCConfigV2` |
+| [`smntc.schema.json`](smntc.schema.json) | Legacy v1 schema for compatibility/migration |
 
 Token values are also exported as runtime constants for programmatic discovery:
 
 ```typescript
-import { SURFACES, VIBES, REACTIVITIES, FIDELITIES, PALETTES } from 'smntc';
+import {
+  SURFACES,
+  VIBES,
+  REACTIVITIES,
+  FIDELITIES,
+  PALETTES,
+  PATTERNS,
+  PATTERN_BLENDS,
+  LAYER_BLEND_MODES,
+} from 'smntc';
 // Each is a frozen readonly array of valid string values
 ```
 

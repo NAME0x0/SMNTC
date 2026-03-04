@@ -7,6 +7,9 @@ import {
   REACTIVITIES,
   FIDELITIES,
   PALETTES,
+  PATTERNS,
+  PATTERN_BLENDS,
+  LAYER_BLEND_MODES,
   listTokens,
 } from '../index';
 import type { SMNTCConfig, ShaderConstants } from '../index';
@@ -34,6 +37,18 @@ describe('Token Enumerations', () => {
 
   it('PALETTES contains exactly the expected values', () => {
     expect(PALETTES).toEqual(['monochrome', 'ember', 'arctic', 'neon', 'phantom', 'ocean', 'sunset', 'matrix', 'vapor', 'gold', 'infrared', 'aurora', 'midnight']);
+  });
+
+  it('PATTERNS contains exactly the expected values', () => {
+    expect(PATTERNS).toEqual(['none', 'grid', 'hexagon', 'dots', 'voronoi', 'waves', 'concentric', 'noise', 'custom']);
+  });
+
+  it('PATTERN_BLENDS contains exactly the expected values', () => {
+    expect(PATTERN_BLENDS).toEqual(['normal', 'add', 'multiply', 'screen']);
+  });
+
+  it('LAYER_BLEND_MODES contains exactly the expected values', () => {
+    expect(LAYER_BLEND_MODES).toEqual(['normal', 'add', 'multiply', 'screen', 'overlay']);
   });
 
   it('all enumerations are frozen (readonly)', () => {
@@ -74,6 +89,15 @@ describe('DEFAULTS', () => {
     expect(DEFAULTS.chromatic).toBe(0);
     expect(DEFAULTS.vignette).toBe(0);
     expect(DEFAULTS.blur).toBe(0);
+    expect(DEFAULTS.pattern.type).toBe('none');
+    expect(DEFAULTS.pattern.scale).toBe(8);
+    expect(DEFAULTS.pattern.weight).toBe(0.2);
+    expect(DEFAULTS.pattern.opacity).toBe(0.45);
+    expect(DEFAULTS.pattern.blend).toBe('normal');
+    expect(DEFAULTS.pattern.animate).toBe(false);
+    expect(DEFAULTS.pattern.rotation).toBe(0);
+    expect(DEFAULTS.pattern.map).toBeNull();
+    expect(DEFAULTS.pattern.repeat).toBe(1);
   });
 });
 
@@ -93,6 +117,15 @@ describe('resolveConstants', () => {
     expect(c.intensity).toBe(1.0);
     expect(c.speed).toBe(1.0);
     expect(c.contourLines).toBe(16);
+    expect(c.patternType).toBe(0);
+    expect(c.patternScale).toBe(8);
+    expect(c.patternWeight).toBe(0.2);
+    expect(c.patternAlpha).toBe(0.45);
+    expect(c.patternMode).toBe(0);
+    expect(c.patternAnimate).toBe(0);
+    expect(c.patternRotation).toBeCloseTo(0);
+    expect(c.patternRepeatX).toBe(1);
+    expect(c.patternRepeatY).toBe(1);
   });
 
   // --------------------------------------------------------------------------
@@ -211,6 +244,33 @@ describe('resolveConstants', () => {
     });
   });
 
+  describe('pattern resolution', () => {
+    it('maps pattern token config to shader constants', () => {
+      const c = resolveConstants({
+        pattern: {
+          type: 'voronoi',
+          scale: 12,
+          weight: 0.35,
+          opacity: 0.8,
+          blend: 'screen',
+          animate: true,
+          rotation: 90,
+          repeat: [2, 3],
+        },
+      });
+
+      expect(c.patternType).toBe(4);
+      expect(c.patternScale).toBe(12);
+      expect(c.patternWeight).toBe(0.35);
+      expect(c.patternAlpha).toBe(0.8);
+      expect(c.patternMode).toBe(3);
+      expect(c.patternAnimate).toBe(1);
+      expect(c.patternRotation).toBeCloseTo(Math.PI / 2);
+      expect(c.patternRepeatX).toBe(2);
+      expect(c.patternRepeatY).toBe(3);
+    });
+  });
+
   // --------------------------------------------------------------------------
   // Numeric Clamping
   // --------------------------------------------------------------------------
@@ -268,6 +328,42 @@ describe('resolveConstants', () => {
       expect(resolveConstants({ blur: -1 }).blur).toBe(0);
       expect(resolveConstants({ blur: 10 }).blur).toBe(1);
       expect(resolveConstants({ blur: 0.4 }).blur).toBe(0.4);
+    });
+
+    it('clamps pattern scale to [0.25, 64]', () => {
+      expect(resolveConstants({ pattern: { scale: 0.01 } }).patternScale).toBe(0.25);
+      expect(resolveConstants({ pattern: { scale: 1000 } }).patternScale).toBe(64);
+      expect(resolveConstants({ pattern: { scale: 4.5 } }).patternScale).toBe(4.5);
+    });
+
+    it('clamps pattern weight to [0.01, 1]', () => {
+      expect(resolveConstants({ pattern: { weight: 0 } }).patternWeight).toBe(0.01);
+      expect(resolveConstants({ pattern: { weight: 2 } }).patternWeight).toBe(1);
+      expect(resolveConstants({ pattern: { weight: 0.5 } }).patternWeight).toBe(0.5);
+    });
+
+    it('clamps pattern opacity to [0, 1]', () => {
+      expect(resolveConstants({ pattern: { opacity: -0.3 } }).patternAlpha).toBe(0);
+      expect(resolveConstants({ pattern: { opacity: 1.5 } }).patternAlpha).toBe(1);
+      expect(resolveConstants({ pattern: { opacity: 0.6 } }).patternAlpha).toBe(0.6);
+    });
+
+    it('clamps scalar pattern repeat to [0.01, 64]', () => {
+      const low = resolveConstants({ pattern: { repeat: 0 } });
+      const high = resolveConstants({ pattern: { repeat: 100 } });
+      const mid = resolveConstants({ pattern: { repeat: 2.5 } });
+      expect(low.patternRepeatX).toBe(0.01);
+      expect(low.patternRepeatY).toBe(0.01);
+      expect(high.patternRepeatX).toBe(64);
+      expect(high.patternRepeatY).toBe(64);
+      expect(mid.patternRepeatX).toBe(2.5);
+      expect(mid.patternRepeatY).toBe(2.5);
+    });
+
+    it('clamps tuple pattern repeat to [0.01, 64] per axis', () => {
+      const c = resolveConstants({ pattern: { repeat: [0, 128] } });
+      expect(c.patternRepeatX).toBe(0.01);
+      expect(c.patternRepeatY).toBe(64);
     });
   });
 

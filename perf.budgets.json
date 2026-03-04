@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "description": "CI performance budgets for deterministic SMNTC hot paths (Node 22 baseline).",
+  "benchmarks": [
+    {
+      "name": "autoscaler.reportFrame",
+      "iterations": 600000,
+      "warmupIterations": 120000,
+      "samples": 7,
+      "maxMedianNsPerOp": 120,
+      "tolerance": 1.35
+    },
+    {
+      "name": "inputProxy.update.clean",
+      "iterations": 450000,
+      "warmupIterations": 90000,
+      "samples": 7,
+      "maxMedianNsPerOp": 90,
+      "tolerance": 1.4
+    },
+    {
+      "name": "inputProxy.update.dirty",
+      "iterations": 200000,
+      "warmupIterations": 40000,
+      "samples": 7,
+      "maxMedianNsPerOp": 800,
+      "tolerance": 1.35
+    },
+    {
+      "name": "inputProxy.update.dirty.realRaycast",
+      "iterations": 80000,
+      "warmupIterations": 16000,
+      "samples": 5,
+      "maxMedianNsPerOp": 6000,
+      "tolerance": 1.45
+    }
+  ]
+}

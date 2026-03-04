@@ -6,6 +6,8 @@ dist/
 .env.local
 coverage/
 .turbo/
+perf-results.json
+artifacts/perf/
 
 # Agent swarm communication files
 AGENT-LOG.md

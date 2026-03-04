@@ -4,11 +4,11 @@
 // Kept as a stable public interface — consumers import from here.
 // ============================================================================
 
-import type { SMNTCConfig, ShaderConstants } from './tokens';
+import type { SMNTCConfig, SMNTCConfigV2, ShaderConstants } from './tokens';
 import { resolveConstants, DEFAULTS } from './dictionary';
 
 export { resolveConstants, DEFAULTS };
-export type { SMNTCConfig, ShaderConstants };
+export type { SMNTCConfig, SMNTCConfigV2, ShaderConstants };
 
 /**
  * Resolves a partial user config into fully-qualified shader constants.

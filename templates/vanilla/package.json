@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "smntc": "^1.1.0",
+    "smntc": "^1.2.0",
     "three": "^0.170.0"
   },
   "devDependencies": {

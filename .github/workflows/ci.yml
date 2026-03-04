@@ -28,6 +28,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Contract drift checks
+        run: npm run test:contracts
+
       - name: Build
         run: npm run build
 
@@ -45,5 +48,21 @@ jobs:
       - name: Bundle size budget
         run: npm run size
 
+      - name: Performance budget gate
+        if: matrix.node-version == 22
+        run: npm run perf:budget:report
+
+      - name: Upload performance report artifact
+        if: matrix.node-version == 22 && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-trend-ci-node${{ matrix.node-version }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/perf/benchmark-results.json
+          if-no-files-found: error
+
       - name: Test
         run: npm test
+
+      - name: Browser smoke tests
+        if: matrix.node-version == 22
+        run: npm run test:browser
