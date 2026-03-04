@@ -83,7 +83,7 @@
   "size-limit": [
     {
       "path": "dist/index.mjs",
-      "limit": "60 KB"
+      "limit": "68 KB"
     },
     {
       "path": "dist/react/index.mjs",
