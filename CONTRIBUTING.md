@@ -11,6 +11,8 @@ cd SMNTC
 npm install
 ```
 
+Requires Node.js 20+.
+
 ### Available Scripts
 
 | Command | Purpose |

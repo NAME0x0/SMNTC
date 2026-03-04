@@ -15,7 +15,7 @@
     "url": "https://github.com/NAME0x0/SMNTC/issues"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "bin": {
     "smntc": "dist/cli.js"
