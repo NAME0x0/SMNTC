@@ -25,6 +25,7 @@ Requires Node.js 20+.
 | `npm run perf:bench` | Run deterministic micro-benchmarks (no gate) |
 | `npm run perf:budget` | Enforce CI performance budgets |
 | `npm run perf:budget:report` | Enforce budgets and emit `artifacts/perf/benchmark-results.json` |
+| `npm run perf:summary` | Render markdown summary from the latest perf report |
 | `npm run perf:baseline:update` | Refresh `perf.baseline.json` from the latest perf report artifact |
 | `npm run perf:baseline:lock` | Refresh baseline and enable regression enforcement |
 | `npm run perf:baseline:unlock` | Refresh baseline and disable regression enforcement |

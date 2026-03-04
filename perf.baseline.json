@@ -12,22 +12,22 @@
     {
       "name": "autoscaler.reportFrame",
       "baselineMedianNsPerOp": 13.17,
-      "maxRegressionPct": 30
+      "maxRegressionPct": 25
     },
     {
       "name": "inputProxy.update.clean",
       "baselineMedianNsPerOp": 7.53,
-      "maxRegressionPct": 30
+      "maxRegressionPct": 25
     },
     {
       "name": "inputProxy.update.dirty",
       "baselineMedianNsPerOp": 133.91,
-      "maxRegressionPct": 30
+      "maxRegressionPct": 25
     },
     {
       "name": "inputProxy.update.dirty.realRaycast",
       "baselineMedianNsPerOp": 1044.07,
-      "maxRegressionPct": 35
+      "maxRegressionPct": 30
     }
   ]
 }

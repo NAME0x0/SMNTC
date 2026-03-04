@@ -76,6 +76,7 @@
     "perf:bench": "node scripts/perf-budget.mjs",
     "perf:budget": "node scripts/perf-budget.mjs --check --baseline perf.baseline.json",
     "perf:budget:report": "node scripts/perf-budget.mjs --check --baseline perf.baseline.json --json artifacts/perf/benchmark-results.json",
+    "perf:summary": "node scripts/perf-summary.mjs --from artifacts/perf/benchmark-results.json --out artifacts/perf/benchmark-summary.md",
     "perf:baseline:update": "node scripts/perf-baseline.mjs --from artifacts/perf/benchmark-results.json --out perf.baseline.json",
     "perf:baseline:lock": "node scripts/perf-baseline.mjs --from artifacts/perf/benchmark-results.json --out perf.baseline.json --lock",
     "perf:baseline:unlock": "node scripts/perf-baseline.mjs --from artifacts/perf/benchmark-results.json --out perf.baseline.json --unlock"
@@ -83,7 +84,7 @@
   "size-limit": [
     {
       "path": "dist/index.mjs",
-      "limit": "68 KB"
+      "limit": "67 KB"
     },
     {
       "path": "dist/react/index.mjs",

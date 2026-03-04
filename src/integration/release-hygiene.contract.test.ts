@@ -6,6 +6,7 @@ type PackageJson = {
   files?: string[];
   exports?: Record<string, unknown>;
   scripts?: Record<string, string>;
+  engines?: Record<string, string>;
 };
 
 const EXPECTED_SOURCE_TYPES = ['geometry', 'image', 'svg', 'text'] as const;
@@ -102,6 +103,7 @@ describe('release hygiene contract', () => {
 
     expect(scripts['perf:budget']).toContain('--baseline perf.baseline.json');
     expect(scripts['perf:budget:report']).toContain('--baseline perf.baseline.json');
+    expect(scripts['perf:summary']).toContain('perf-summary.mjs');
     expect(scripts['perf:baseline:update']).toContain('perf-baseline.mjs');
     expect(scripts['perf:baseline:lock']).toContain('--lock');
     expect(scripts['perf:baseline:unlock']).toContain('--unlock');
@@ -114,5 +116,14 @@ describe('release hygiene contract', () => {
       expect(entry.maxRegressionPct).toBeLessThanOrEqual(35);
       expect(entry.baselineMedianNsPerOp).toBeGreaterThan(0);
     }
+  });
+
+  it('keeps runtime policy aligned to Node 20+ tooling and CI matrix', () => {
+    const packageJson = loadJson<PackageJson>('../../package.json');
+    const ciWorkflow = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+
+    expect(packageJson.engines?.node).toBe('>=20');
+    expect(ciWorkflow).toContain('node-version: [20, 22]');
+    expect(ciWorkflow).not.toContain('node-version: [18');
   });
 });
